@@ -1,0 +1,19 @@
+{
+  "name": "mynav-personal",
+  "version": "1.0.0",
+  "description": "MyNav Personal - Personal Bookmark Navigation System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cookie-parser": "^1.4.6",
+    "ejs": "^5.0.2",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "md5": "^2.3.0",
+    "multer": "^2.1.1"
+  }
+}
