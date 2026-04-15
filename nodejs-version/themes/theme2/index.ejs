@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= siteName %></title>
+    <meta name="keywords" content="<%= settings.keywords || '' %>">
+    <meta name="description" content="<%= settings.description || '' %>">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <%- typeof custom_header !== 'undefined' ? custom_header : '' %>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: #0d1117;
+            background-image: url('https://pic.imgdb.cn/item/32/60/17/2023/5/13.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            color: #c9d1d9;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(13,17,23,0.88);
+            z-index: -1;
+        }
+        .site-wrap {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 0 12px;
+        }
+        /* Header */
+        .site-header {
+            padding: 32px 0 16px;
+            text-align: center;
+        }
+        .site-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            margin-bottom: 6px;
+        }
+        .site-logo i { color: #58a6ff; font-size: 26px; }
+        .site-desc {
+            font-size: 12px;
+            color: #8b949e;
+            letter-spacing: 1px;
+        }
+        /* Search */
+        .search-area {
+            background: rgba(22,27,34,0.85);
+            border: 1px solid rgba(240,246,252,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .search-row {
+            display: flex;
+            gap: 8px;
+        }
+        .search-input-wrap {
+            flex: 1;
+            position: relative;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 38px;
+            background: rgba(13,17,23,0.9);
+            border: 1px solid rgba(240,246,252,0.15);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: #58a6ff; }
+        .search-input::placeholder { color: #484f58; }
+        .search-input-wrap .fa-search {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #484f58;
+            font-size: 14px;
+        }
+        .engine-btns {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .engine-btn {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(240,246,252,0.15);
+            background: transparent;
+            color: #8b949e;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .engine-btn:hover, .engine-btn.active {
+            border-color: #58a6ff;
+            color: #58a6ff;
+            background: rgba(88,166,255,0.1);
+        }
+        /* Category tabs */
+        .cat-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .cat-tag {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid rgba(240,246,252,0.12);
+            background: rgba(22,27,34,0.6);
+            color: #8b949e;
+            text-decoration: none;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .cat-tag:hover, .cat-tag.active {
+            border-color: #58a6ff;
+            color: #fff;
+            background: rgba(88,166,255,0.15);
+        }
+        .cat-tag i { margin-right: 4px; }
+        /* Bookmark grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding-bottom: 40px;
+        }
+        @media(max-width: 480px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .card {
+            background: rgba(22,27,34,0.75);
+            border: 1px solid rgba(240,246,252,0.08);
+            border-radius: 10px;
+            padding: 14px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .card:hover {
+            border-color: rgba(88,166,255,0.4);
+            background: rgba(30,36,46,0.85);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(88,166,255,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #58a6ff;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .card-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .card-title {
+            font-size: 13px;
+            color: #e6edf3;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-desc {
+            font-size: 11px;
+            color: #8b949e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Category sections */
+        .cat-section { margin-bottom: 28px; }
+        .cat-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(240,246,252,0.08);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cat-title i { color: #58a6ff; }
+        /* Footer */
+        .site-footer {
+            text-align: center;
+            padding: 24px 0;
+            font-size: 11px;
+            color: #484f58;
+        }
+        /* Search suggestions */
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0; right: 0;
+            background: #161b22;
+            border: 1px solid rgba(240,246,252,0.15);
+            border-radius: 8px;
+            margin-top: 4px;
+            z-index: 100;
+            display: none;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .suggestions.show { display: block; }
+        .suggestion-item {
+            padding: 8px 14px;
+            font-size: 13px;
+            color: #c9d1d9;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .suggestion-item:hover { background: rgba(88,166,255,0.1); color: #fff; }
+        .suggestion-item .title { flex: 1; }
+        .suggestion-item .hint { font-size: 11px; color: #484f58; }
+        /* No results */
+        .no-result {
+            text-align: center;
+            padding: 40px 0;
+            color: #8b949e;
+            font-size: 14px;
+        }
+        .no-result i { font-size: 40px; margin-bottom: 12px; display: block; color: #484f58; }
+        /* Theme switch */
+        .theme-switch {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 999;
+        }
+        .theme-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            border-radius: 20px;
+            border: 1px solid rgba(240,246,252,0.15);
+            background: rgba(22,27,34,0.8);
+            color: #8b949e;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .theme-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+        .theme-btn.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.1); }
+    </style>
+</head>
+<body>
+
+<!-- Theme Switch -->
+<div class="theme-switch">
+    <a href="/?theme=1" class="theme-btn <%= currentTheme == '1' ? 'active' : '' %>">🌐 主题1</a>
+    <a href="/?theme=2" class="theme-btn <%= currentTheme == '2' ? 'active' : '' %>">🔷 主题2</a>
+    <a href="/?theme=3" class="theme-btn <%= currentTheme == '3' ? 'active' : '' %>">🔶 主题3</a>
+</div>
+
+<div class="site-wrap">
+    <!-- Header -->
+    <div class="site-header">
+        <a href="/" class="site-logo">
+            <i class="fa fa-bookmark"></i>
+            <span><%= siteName %></span>
+        </a>
+        <div class="site-desc" id="dateTime"></div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-area">
+        <div class="engine-btns">
+            <button class="engine-btn active" data-engine="baidu" data-url="https://www.baidu.com/s?wd=">🌐 百度</button>
+            <button class="engine-btn" data-engine="bing" data-url="https://www.bing.com/search?q=">🌐 Bing</button>
+            <button class="engine-btn" data-engine="google" data-url="https://www.google.com/search?q=">🌐 Google</button>
+        </div>
+        <div class="search-row">
+            <div class="search-input-wrap" style="flex:1">
+                <i class="fa fa-search"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索书签，按回车跳转..." autocomplete="off">
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="cat-list" id="catList">
+        <span class="cat-tag active" data-cat="all"><i class="fa fa-globe"></i>全部</span>
+        <% categories.forEach(function(cat) { %>
+            <span class="cat-tag" data-cat="<%= cat.id %>"><%= cat.icon %> <%= cat.name %></span>
+        <% }); %>
+    </div>
+
+    <!-- Bookmarks -->
+    <div id="bookmarkGrid">
+        <% if (categories.length === 0) { %>
+            <div class="no-result"><i class="fa fa-bookmark-o"></i>暂无书签</div>
+        <% } else { %>
+            <% categories.forEach(function(cat) { %>
+                <div class="cat-section" id="cat-<%= cat.id %>">
+                    <div class="cat-title"><%= cat.icon %> <%= cat.name %></div>
+                    <div class="grid">
+                        <% cat.links.forEach(function(link) { %>
+                            <a href="<%= link.url %>" class="card" target="_blank"
+                               data-title="<%= link.title %>"
+                               data-url="<%= link.url %>"
+                               data-desc="<%= link.description || '' %>">
+                                <div class="card-icon">
+                                    <% if (link.favicon) { %>
+                                        <img src="<%= link.favicon %>" onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
+                                    <% } else { %>
+                                        <i class="fa fa-link"></i>
+                                    <% } %>
+                                </div>
+                                <div class="card-title"><%= link.title %></div>
+                                <div class="card-desc"><%= link.description || '' %></div>
+                            </a>
+                        <% }); %>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+
+    <div class="site-footer">
+        &copy; <%= new Date().getFullYear() %> <%= siteName %>
+        <span style="margin-left:8px"><a href="/login" style="color:#484f58;text-decoration:none">管理</a></span>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+<script>
+// Date time
+function showTime() {
+    var now = new Date();
+    var d = now.toLocaleDateString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit'});
+    var t = now.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('dateTime').textContent = d + ' ' + t;
+}
+showTime();
+setInterval(showTime, 1000);
+
+// Search
+var engine = 'baidu';
+var engineUrl = 'https://www.baidu.com/s?wd=';
+var searchInput = document.getElementById('searchInput');
+var suggestions = document.getElementById('suggestions');
+var allLinks = <%- JSON.stringify(allLinks) %>;
+
+document.querySelectorAll('.engine-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        engine = btn.dataset.engine;
+        engineUrl = btn.dataset.url;
+    });
+});
+
+searchInput.addEventListener('input', function() {
+    var q = this.value.trim();
+    if (!q) { suggestions.classList.remove('show'); return; }
+    var matches = allLinks.filter(function(l) {
+        return l.title.indexOf(q) >= 0 || (l.description && l.description.indexOf(q) >= 0);
+    }).slice(0, 8);
+    if (matches.length === 0) { suggestions.classList.remove('show'); return; }
+    suggestions.innerHTML = matches.map(function(m) {
+        return '<div class="suggestion-item" data-url="' + m.url + '"><span class="title">' + m.title + '</span><span class="hint">' + (m.description||'') + '</span></div>';
+    }).join('');
+    suggestions.classList.add('show');
+});
+
+suggestions.addEventListener('click', function(e) {
+    var item = e.target.closest('.suggestion-item');
+    if (item) { window.open(item.dataset.url, '_blank'); suggestions.classList.remove('show'); }
+});
+
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        var q = this.value.trim();
+        if (q) { window.open(engineUrl + encodeURIComponent(q), '_blank'); }
+        suggestions.classList.remove('show');
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.search-input-wrap')) suggestions.classList.remove('show');
+});
+
+// Category filter
+document.querySelectorAll('.cat-tag').forEach(function(tag) {
+    tag.addEventListener('click', function() {
+        document.querySelectorAll('.cat-tag').forEach(t => t.classList.remove('active'));
+        tag.classList.add('active');
+        var cat = tag.dataset.cat;
+        document.querySelectorAll('.cat-section').forEach(function(sec) {
+            if (cat === 'all' || sec.id === 'cat-' + cat) {
+                sec.style.display = '';
+            } else {
+                sec.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>
