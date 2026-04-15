@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= siteName %></title>
+    <meta name="keywords" content="<%= settings.keywords || '' %>">
+    <meta name="description" content="<%= settings.description || '' %>">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <%- typeof custom_header !== 'undefined' ? custom_header : '' %>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            /* pcfix.fun style: dark bg image */
+            background-image: url('https://pcfix.fun/data/upload/202512/jxgz.png');
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+            background-color: #1a1a2e;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(26,26,46,0.92);
+            z-index: -1;
+        }
+        /* Navbar */
+        .navbar-custom {
+            background: rgba(26,26,46,0.95) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        .navbar-brand-custom {
+            color: #fff !important;
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .navbar-brand-custom i { color: #f39c12; }
+        /* Main container */
+        .main-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 80px 15px 40px;
+        }
+        /* Search section */
+        .search-section {
+            margin-bottom: 28px;
+        }
+        .search-box {
+            position: relative;
+            background: rgba(255,255,255,0.95);
+            border-radius: 50px;
+            padding: 6px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .search-box .fa-search {
+            color: #888;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .search-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 15px;
+            color: #333;
+            padding: 8px 0;
+        }
+        .search-box input::placeholder { color: #aaa; }
+        /* Category tabs */
+        .cat-tabs-wrap {
+            position: relative;
+            margin-bottom: 28px;
+        }
+        .cat-tabs-inner {
+            overflow-x: auto;
+            padding: 0 40px;
+            scrollbar-width: none;
+        }
+        .cat-tabs-inner::-webkit-scrollbar { display: none; }
+        .cat-scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .cat-scroll-btn:hover { background: rgba(255,255,255,0.2); }
+        .cat-scroll-btn.prev { left: 0; }
+        .cat-scroll-btn.next { right: 0; }
+        .cat-tabs {
+            display: flex;
+            gap: 8px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            white-space: nowrap;
+        }
+        .cat-tab {
+            padding: 7px 18px;
+            border-radius: 25px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .cat-tab:hover, .cat-tab.active {
+            background: rgba(243,156,18,0.2);
+            border-color: #f39c12;
+            color: #f39c12;
+        }
+        .cat-tab i { margin-right: 5px; }
+        /* Category section */
+        .cat-section { margin-bottom: 36px; }
+        .cat-title-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .cat-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .cat-title i { color: #f39c12; }
+        .cat-count {
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        /* Bookmark cards - pcfix.fun style */
+        .bm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+        }
+        .bm-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.25s;
+            position: relative;
+        }
+        .bm-card:hover {
+            border-color: rgba(243,156,18,0.4);
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        .bm-link {
+            display: block;
+            padding: 14px 14px 10px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .bm-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .bm-favicon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(243,156,18,0.1);
+        }
+        .bm-favicon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .bm-favicon i { color: #f39c12; font-size: 16px; }
+        .bm-title {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bm-desc {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bm-url {
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 4px;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.15);
+        }
+        .bm-action-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .bm-action-btn:hover {
+            background: rgba(243,156,18,0.2);
+            color: #f39c12;
+        }
+        /* QR modal */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-modal.show { display: flex; }
+        .qr-modal-inner {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            min-width: 280px;
+        }
+        .qr-modal-inner h5 { margin-bottom: 16px; color: #333; font-size: 15px; }
+        #qrCanvas { max-width: 200px; margin: 0 auto; }
+        /* Toast */
+        .toast-msg {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            z-index: 99999;
+            transition: transform 0.3s;
+            pointer-events: none;
+        }
+        .toast-msg.show { transform: translateX(-50%) translateY(0); }
+        /* Footer */
+        .site-footer {
+            text-align: center;
+            padding: 24px 0;
+            font-size: 12px;
+            color: rgba(255,255,255,0.3);
+        }
+        /* Theme switch */
+        .theme-switch {
+            position: fixed;
+            top: 70px;
+            right: 14px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .theme-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(26,26,46,0.8);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .theme-btn:hover, .theme-btn.active {
+            border-color: #f39c12;
+            color: #f39c12;
+            background: rgba(243,156,18,0.1);
+        }
+        /* No results */
+        .no-result {
+            text-align: center;
+            padding: 60px 0;
+            color: rgba(255,255,255,0.4);
+        }
+        .no-result i { font-size: 48px; margin-bottom: 14px; display: block; color: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom fixed-top">
+    <div class="container">
+        <a class="navbar-brand navbar-brand-custom" href="/">
+            <i class="fa fa-bookmark"></i>
+            <%= siteName %>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item"><a class="nav-link" href="/login"><i class="fa fa-sign-in"></i> 登录</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Theme Switch -->
+<div class="theme-switch">
+    <a href="/?theme=1" class="theme-btn <%= currentTheme == '1' ? 'active' : '' %>">🌐 主题1</a>
+    <a href="/?theme=2" class="theme-btn <%= currentTheme == '2' ? 'active' : '' %>">🔷 主题2</a>
+    <a href="/?theme=3" class="theme-btn <%= currentTheme == '3' ? 'active' : '' %>">🔶 主题3</a>
+</div>
+
+<div class="main-container">
+    <!-- Search -->
+    <div class="search-section">
+        <div class="search-box">
+            <i class="fa fa-search"></i>
+            <input type="text" id="searchInput" placeholder="搜索书签..." autocomplete="off">
+        </div>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="cat-tabs-wrap" id="catTabsWrap">
+        <button class="cat-scroll-btn prev" id="catPrev"><i class="fa fa-angle-left"></i></button>
+        <div class="cat-tabs-inner" id="catTabsInner">
+            <div class="cat-tabs">
+                <span class="cat-tab active" data-cat="all"><i class="fa fa-home"></i> 全部</span>
+                <% categories.forEach(function(cat) { %>
+                    <span class="cat-tab" data-cat="<%= cat.id %>"><%= cat.icon %> <%= cat.name %></span>
+                <% }); %>
+            </div>
+        </div>
+        <button class="cat-scroll-btn next" id="catNext"><i class="fa fa-angle-right"></i></button>
+    </div>
+
+    <!-- Bookmarks -->
+    <div id="bookmarksArea">
+        <% if (categories.length === 0) { %>
+            <div class="no-result"><i class="fa fa-bookmark-o"></i>暂无书签，<a href="/login" style="color:#f39c12">去后台添加</a></div>
+        <% } else { %>
+            <% categories.forEach(function(cat) { %>
+                <div class="cat-section" id="cat-section-<%= cat.id %>">
+                    <div class="cat-title-row">
+                        <div class="cat-title"><%= cat.icon %> <%= cat.name %></div>
+                        <span class="cat-count"><%= cat.links.length %></span>
+                    </div>
+                    <div class="bm-grid">
+                        <% cat.links.forEach(function(link) { %>
+                            <div class="bm-card" data-title="<%= link.title %>" data-url="<%= link.url %>" data-desc="<%= link.description || '' %>">
+                                <a href="<%= link.url %>" class="bm-link" target="_blank">
+                                    <div class="bm-header">
+                                        <div class="bm-favicon">
+                                            <% if (link.favicon) { %>
+                                                <img src="<%= link.favicon %>" onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
+                                            <% } else { %>
+                                                <i class="fa fa-link"></i>
+                                            <% } %>
+                                        </div>
+                                        <div class="bm-title"><%= link.title %></div>
+                                    </div>
+                                    <div class="bm-desc"><%= link.description || '' %></div>
+                                    <div class="bm-url"></div>
+                                </a>
+                                <div class="bm-actions">
+                                    <button class="bm-action-btn copy-btn" data-url="<%= link.url %>" title="复制链接"><i class="fa fa-copy"></i></button>
+                                    <button class="bm-action-btn qr-btn" data-url="<%= link.url %>" data-title="<%= link.title %>" title="二维码"><i class="fa fa-qrcode"></i></button>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+    </div>
+
+    <div class="site-footer">
+        &copy; <%= new Date().getFullYear() %> <%= siteName %>
+    </div>
+</div>
+
+<!-- QR Modal -->
+<div class="qr-modal" id="qrModal">
+    <div class="qr-modal-inner">
+        <h5 id="qrTitle">二维码</h5>
+        <canvas id="qrCanvas"></canvas>
+        <div style="margin-top:12px"><a id="qrUrl" href="#" target="_blank" style="color:#666;font-size:12px"></a></div>
+        <div style="margin-top:8px"><button class="btn btn-sm btn-secondary" onclick="document.getElementById('qrModal').classList.remove('show')">关闭</button></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-msg" id="toast"></div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script>
+// Toast
+function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+// QR Code (simple inline)
+function generateQR(text, canvas, size) {
+    // Use a simple QR library from CDN
+    var script = document.createElement('script');
+    script.src = 'https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.onload = function() {
+        new QRCode(canvas, { text: text, width: size, height: size });
+    };
+    document.head.appendChild(script);
+}
+
+// Copy
+document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var url = btn.dataset.url;
+        navigator.clipboard.writeText(url).then(function() {
+            toast('链接已复制');
+        }).catch(function() {
+            var ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            toast('链接已复制');
+        });
+    });
+});
+
+// QR
+document.querySelectorAll('.qr-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var url = btn.dataset.url;
+        var title = btn.dataset.title;
+        var canvas = document.getElementById('qrCanvas');
+        var modal = document.getElementById('qrModal');
+        document.getElementById('qrTitle').textContent = title;
+        document.getElementById('qrUrl').href = url;
+        document.getElementById('qrUrl').textContent = url;
+        canvas.innerHTML = '';
+        modal.classList.add('show');
+        generateQR(url, canvas, 200);
+    });
+});
+
+document.getElementById('qrModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+});
+
+// Category filter
+document.querySelectorAll('.cat-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        var cat = tab.dataset.cat;
+        document.querySelectorAll('.cat-section').forEach(function(sec) {
+            if (cat === 'all' || sec.id === 'cat-section-' + cat) {
+                sec.style.display = '';
+            } else {
+                sec.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Category scroll
+var inner = document.getElementById('catTabsInner');
+document.getElementById('catPrev').addEventListener('click', function() { inner.scrollLeft -= 200; });
+document.getElementById('catNext').addEventListener('click', function() { inner.scrollLeft += 200; });
+
+// Search filter
+var searchInput = document.getElementById('searchInput');
+var allLinks = <%- JSON.stringify(allLinks) %>;
+
+searchInput.addEventListener('input', function() {
+    var q = this.value.trim().toLowerCase();
+    if (!q) {
+        document.querySelectorAll('.bm-card').forEach(function(c) { c.style.display = ''; });
+        document.querySelectorAll('.cat-section').forEach(function(s) { s.style.display = ''; });
+        return;
+    }
+    document.querySelectorAll('.bm-card').forEach(function(card) {
+        var match = card.dataset.title.toLowerCase().indexOf(q) >= 0 ||
+            (card.dataset.desc && card.dataset.desc.toLowerCase().indexOf(q) >= 0);
+        card.style.display = match ? '' : 'none';
+    });
+});
+</script>
+</body>
+</html>
