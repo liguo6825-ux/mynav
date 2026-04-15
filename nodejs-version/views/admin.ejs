@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - <%= settings.title %></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --sidebar-bg: #2c3e50;
+            --sidebar-text: #ecf0f1;
+            --content-bg: #f5f7fa;
+            --card-bg: #ffffff;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--content-bg);
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-header h2 { font-size: 1.3rem; }
+        .sidebar-header p { font-size: 12px; opacity: 0.7; }
+        
+        .nav-menu { list-style: none; }
+        
+        .nav-menu li a {
+            display: block;
+            padding: 12px 20px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .nav-menu li a:hover,
+        .nav-menu li a.active {
+            background: rgba(255,255,255,0.1);
+            border-left: 3px solid var(--primary);
+        }
+        
+        .nav-menu li a i { margin-right: 10px; width: 20px; }
+        
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .page-header { margin-bottom: 30px; }
+        .page-header h1 { font-size: 1.8rem; color: #333; }
+        .page-header p { color: #666; margin-top: 5px; }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-header h3 { font-size: 1.2rem; color: #333; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card i { font-size: 2rem; margin-bottom: 10px; }
+        .stat-card .stat-number { font-size: 2.5rem; font-weight: bold; }
+        .stat-card .stat-label { font-size: 14px; opacity: 0.9; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .data-table tr:hover { background: #f8f9fa; }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); }
+
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-info { background: #3498db; color: white; }
+        .btn-secondary { background: #7f8c8d; color: white; }
+
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        /* Alert 样式 */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-bookmark"></i> MyNav</h2>
+            <p>管理后台</p>
+        </div>
+        
+        <ul class="nav-menu">
+            <li><a href="/admin" class="<%= action === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> <span>仪表盘</span></a></li>
+            <li><a href="/admin/category" class="<%= action === 'category' ? 'active' : '' %>"><i class="fas fa-folder"></i> <span>分类管理</span></a></li>
+            <li><a href="/admin/link" class="<%= action === 'link' ? 'active' : '' %>"><i class="fas fa-link"></i> <span>链接管理</span></a></li>
+            <li><a href="/admin/settings" class="<%= action === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> <span>系统设置</span></a></li>
+            <li><a href="/" target="_blank"><i class="fas fa-home"></i> <span>访问首页</span></a></li>
+            <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>退出登录</span></a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <% if (action === 'dashboard') { %>
+            <div class="page-header">
+                <h1><i class="fas fa-tachometer-alt"></i> 仪表盘</h1>
+                <p>欢迎回来，管理员</p>
+            </div>
+
+            <% if (message) { %>
+            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <%= message %></div>
+            <% } %>
+            <% if (error) { %>
+            <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <%= error %></div>
+            <% } %>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-folder"></i>
+                    <div class="stat-number"><%= stats.categories %></div>
+                    <div class="stat-label">分类数量</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-link"></i>
+                    <div class="stat-number"><%= stats.links %></div>
+                    <div class="stat-label">链接总数</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <div class="stat-number"><%= stats.todayLinks %></div>
+                    <div class="stat-label">今日新增</div>
+                </div>
+            </div>
+            
+        <% } else if (action === 'category') { %>
+            <div class="page-header">
+                <h1><i class="fas fa-folder"></i> 分类管理</h1>
+                <p>管理书签分类</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>添加分类</h3></div>
+                <form method="POST" action="/admin/category/add">
+                    <div class="form-group">
+                        <label>分类名称</label>
+                        <input type="text" name="name" required placeholder="输入分类名称">
+                    </div>
+                    <div class="form-group">
+                        <label>父分类</label>
+                        <select name="fid">
+                            <option value="0">作为一级分类</option>
+                            <% categories.forEach(function(cat) { %>
+                                <% if (cat.fid === 0) { %>
+                                    <option value="<%= cat.id %>">-- <%= cat.name %></option>
+                                <% } %>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>权重 (越大越靠前)</label>
+                        <input type="number" name="weight" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>图标 (FontAwesome)</label>
+                        <input type="text" name="font_icon" value="fa-folder" placeholder="例如: fa-star">
+                    </div>
+                    <button type="submit" class="btn btn-primary">添加分类</button>
+                </form>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>分类列表</h3></div>
+                <table class="data-table">
+                    <thead>
+                        <tr><th>ID</th><th>名称</th><th>类型</th><th>显示</th><th>权重</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <% categories.forEach(function(cat) { %>
+                            <tr>
+                                <td><%= cat.id %></td>
+                                <td><i class="fas <%= cat.font_icon %>"></i> <%= cat.name %></td>
+                                <td><%= cat.fid === 0 ? '一级分类' : '二级分类' %></td>
+                                <td>
+                                    <% if (cat.hidden == 1) { %>
+                                        <span style="color: #999;">隐藏</span>
+                                    <% } else { %>
+                                        <span style="color: green;">显示</span>
+                                    <% } %>
+                                </td>
+                                <td><%= cat.weight %></td>
+                                <td>
+                                    <form method="POST" action="/admin/category/toggle" style="display: inline;">
+                                        <input type="hidden" name="id" value="<%= cat.id %>">
+                                        <button type="submit" class="btn btn-sm"><%= cat.hidden == 1 ? '显示' : '隐藏' %></button>
+                                    </form>
+                                    <form method="POST" action="/admin/category/delete" style="display: inline;" onsubmit="return confirm('确定删除？')">
+                                        <input type="hidden" name="id" value="<%= cat.id %>">
+                                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            
+        <% } else if (action === 'link') { %>
+            <div class="page-header">
+                <h1><i class="fas fa-link"></i> 链接管理</h1>
+                <p>管理书签链接</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>添加链接</h3></div>
+                <form method="POST" action="/admin/link/add">
+                    <div class="form-group">
+                        <label>链接标题</label>
+                        <input type="text" name="title" required placeholder="输入链接标题">
+                    </div>
+                    <div class="form-group">
+                        <label>链接地址</label>
+                        <input type="url" name="url" required placeholder="https://example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea name="description" rows="2" placeholder="简短描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>所属分类</label>
+                        <select name="fid" required>
+                            <% categories.forEach(function(cat) { %>
+                                <option value="<%= cat.id %>"><%= cat.fid === 0 ? '' : '└─ ' %><%= cat.name %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>权重</label>
+                        <input type="number" name="weight" value="100">
+                    </div>
+                    <button type="submit" class="btn btn-primary">添加链接</button>
+                </form>
+            </div>
+            
+            <div class="card">
+                <div class="card-header"><h3>链接列表</h3></div>
+                <table class="data-table">
+                    <thead>
+                        <tr><th>标题</th><th>URL</th><th>分类</th><th>置顶</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <% links.forEach(function(link) { %>
+                            <tr>
+                                <td><%= link.title %></td>
+                                <td><a href="<%= link.url %>" target="_blank"><%= link.url.substring(0, 40) %></a></td>
+                                <td><%= link.fid %></td>
+                                <td><%= link.topping ? '是' : '否' %></td>
+                                <td>
+                                    <form method="POST" action="/admin/link/toggle-top" style="display: inline;">
+                                        <input type="hidden" name="id" value="<%= link.id %>">
+                                        <button type="submit" class="btn btn-primary btn-sm"><%= link.topping ? '取消置顶' : '置顶' %></button>
+                                    </form>
+                                    <form method="POST" action="/admin/link/delete" style="display: inline;" onsubmit="return confirm('确定删除？')">
+                                        <input type="hidden" name="id" value="<%= link.id %>">
+                                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+            
+        <% } else if (action === 'settings') { %>
+            <div class="page-header">
+                <h1><i class="fas fa-cog"></i> 系统设置</h1>
+                <p>配置网站基本信息</p>
+            </div>
+
+            <% if (message) { %>
+            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <%= message %></div>
+            <% } %>
+            <% if (error) { %>
+            <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> <%= error %></div>
+            <% } %>
+
+            <div class="card">
+                <form method="POST" action="/admin/settings">
+                    <div class="form-group">
+                        <label>网站标题</label>
+                        <input type="text" name="title" value="<%= settings.title %>">
+                    </div>
+                    <div class="form-group">
+                        <label>副标题</label>
+                        <input type="text" name="subtitle" value="<%= settings.subtitle %>">
+                    </div>
+                    <div class="form-group">
+                        <label>网站描述</label>
+                        <textarea name="description" rows="3"><%= settings.description %></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>关键词</label>
+                        <input type="text" name="keywords" value="<%= settings.keywords %>">
+                    </div>
+                    <div class="form-group">
+                        <label>每分类显示链接数</label>
+                        <input type="number" name="link_num" value="<%= settings.link_num %>">
+                    </div>
+                    <div class="form-group">
+                        <label>默认主题</label>
+                        <select name="theme" class="form-control">
+                            <option value="1" <%= settings.theme === '1' || !settings.theme ? 'selected' : '' %>>主题1 - WebStack风格（左侧导航）</option>
+                            <option value="2" <%= settings.theme === '2' ? 'selected' : '' %>>主题2 - 深色居中（多引擎搜索）</option>
+                            <option value="3" <%= settings.theme === '3' ? 'selected' : '' %>>主题3 - 卡片风格（固定导航栏）</option>
+                        </select>
+                        <small class="form-text text-muted">选择网站首页默认显示的主题风格</small>
+                    </div>
+                    <div class="form-group">
+                        <label>自定义 Header</label>
+                        <textarea name="custom_header" rows="5" placeholder="可放置统计代码、自定义CSS样式或JavaScript代码"><%= settings.custom_header || '' %></textarea>
+                        <small class="form-text text-muted">插入到页面 &lt;head&gt; 标签内，用于添加统计代码、自定义样式等</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </form>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3><i class="fas fa-exchange-alt"></i> 书签导入/导出</h3>
+                <p>支持浏览器书签格式（HTML）导入导出</p>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <a href="/admin/export" class="btn btn-success"><i class="fas fa-download"></i> 导出书签</a>
+                    <form method="POST" action="/admin/import" enctype="multipart/form-data" style="display: inline;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" name="bookmarks" accept=".html" style="display: none;" id="importFile" onchange="this.form.submit()">
+                            <label for="importFile" class="btn btn-warning"><i class="fas fa-upload"></i> 导入书签</label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3><i class="fas fa-database"></i> 数据备份/恢复</h3>
+                <p>备份包含所有分类、链接、设置和用户数据（JSON格式）</p>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <a href="/admin/backup" class="btn btn-info"><i class="fas fa-download"></i> 下载备份</a>
+                    <form method="POST" action="/admin/restore" enctype="multipart/form-data" style="display: inline;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" name="backup" accept=".json" style="display: none;" id="restoreFile" onchange="if(confirm('恢复数据将覆盖现有数据，确定要继续吗？')) this.form.submit()">
+                            <label for="restoreFile" class="btn btn-secondary"><i class="fas fa-upload"></i> 恢复数据</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="alert alert-warning" style="margin-top: 15px;">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>注意：</strong>恢复数据会覆盖现有数据，请谨慎操作！
+                </div>
+            </div>
+        <% } %>
+    </main>
+</body>
+</html>
