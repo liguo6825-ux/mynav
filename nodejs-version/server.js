@@ -68,6 +68,33 @@ function initDatabase() {
             email TEXT,
             add_time INTEGER DEFAULT (strftime('%s', 'now'))
         );
+        
+        CREATE TABLE IF NOT EXISTS on_verify_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            type TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        
+        CREATE TABLE IF NOT EXISTS on_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            action TEXT NOT NULL,
+            ip TEXT,
+            user_agent TEXT,
+            details TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        
+        CREATE TABLE IF NOT EXISTS on_rate_limits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT UNIQUE NOT NULL,
+            count INTEGER DEFAULT 1,
+            window_start INTEGER NOT NULL
+        );
     `);
     
     // 数据库迁移：添加 hidden 字段（如果不存在）
@@ -77,6 +104,16 @@ function initDatabase() {
         // 字段已存在，忽略错误
     }
     
+    // 迁移：添加安全相关字段和表
+    const migrations = [
+        "ALTER TABLE on_users ADD COLUMN password_changed_at TEXT",
+        "ALTER TABLE on_users ADD COLUMN email_verified INTEGER DEFAULT 0",
+        "ALTER TABLE on_users ADD COLUMN reset_token TEXT",
+        "ALTER TABLE on_users ADD COLUMN reset_token_expires TEXT",
+    ];
+    migrations.forEach(sql => {
+        try { db.exec(sql); } catch (e) { /* 已存在，忽略 */ }
+    });
     // 检查是否已初始化
     const userCount = db.prepare('SELECT COUNT(*) as count FROM on_users').get();
     if (userCount.count === 0) {
@@ -151,16 +188,117 @@ app.use((req, res, next) => {
     next();
 });
 
-// 辅助函数
+// ============ 安全工具函数（必须在路由之前定义）============
+
+// ---------- 频率限制 ----------
+const RATE_LIMITS = {
+    'change-password':  { window: 5 * 60 * 1000,  max: 5,  msg: '密码修改过于频繁，请5分钟后再试' },
+    'send-code':       { window: 60 * 1000,        max: 3,  msg: '验证码发送过于频繁，请1分钟后再试' },
+    'forgot-password': { window: 60 * 1000,        max: 3,  msg: '请求过于频繁，请1分钟后再试' },
+    'reset-password':  { window: 15 * 60 * 1000, max: 3,  msg: '重置尝试过于频繁，请15分钟后再试' },
+    'login':           { window: 15 * 60 * 1000,  max: 5,  msg: '登录尝试过于频繁，请15分钟后再试' }
+};
+
+function checkRateLimit(key) {
+    const limit = RATE_LIMITS[key];
+    if (!limit) return { allowed: true };
+    const now = Date.now();
+    db.prepare('DELETE FROM on_rate_limits WHERE window_start < ?').run(now - limit.window);
+    const record = db.prepare('SELECT * FROM on_rate_limits WHERE key = ?').get(key);
+    if (!record) {
+        db.prepare('INSERT INTO on_rate_limits (key, count, window_start) VALUES (?, 1, ?)').run(key, now);
+        return { allowed: true };
+    }
+    if (record.count >= limit.max) return { allowed: false, msg: limit.msg };
+    db.prepare('UPDATE on_rate_limits SET count = count + 1 WHERE key = ?').run(key);
+    return { allowed: true };
+}
+
+// ---------- 审计日志 ----------
+function auditLog(action, username, req, details) {
+    try {
+        db.prepare(
+            'INSERT INTO on_audit_log (username, action, ip, user_agent, details) VALUES (?, ?, ?, ?, ?)'
+        ).run(
+            username || null,
+            action,
+            req ? (req.ip || req.headers['x-forwarded-for'] || '-') : '-',
+            req ? (req.headers['user-agent'] || '-') : '-',
+            details || null
+        );
+    } catch (e) {
+        console.error('审计日志写入失败:', e.message);
+    }
+}
+
+// ---------- SMTP 加密存储 ----------
+const SMTP_KEY = crypto.scryptSync(
+    process.env.SMTP_KEY || 'mynav-smtp-key-2024',
+    'mynav-salt-v1',
+    32
+);
+
+function encryptSMTP(pass) {
+    if (!pass) return '';
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-gcm', SMTP_KEY, iv);
+    const encrypted = Buffer.concat([cipher.update(pass, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return Buffer.concat([iv, tag, encrypted]).toString('base64');
+}
+
+function decryptSMTP(encrypted) {
+    if (!encrypted) return '';
+    try {
+        const buf = Buffer.from(encrypted, 'base64');
+        const decipher = crypto.createDecipheriv('aes-256-gcm', SMTP_KEY, buf.subarray(0, 16));
+        decipher.setAuthTag(buf.subarray(16, 32));
+        return decipher.update(buf.subarray(32)) + decipher.final('utf8');
+    } catch (e) {
+        return encrypted; // 旧明文数据直接返回
+    }
+}
+
+// ---------- 定期清理 ----------
+function cleanupExpired() {
+    if (!db) return; // 数据库未初始化时跳过
+    const now = new Date(Date.now()).toISOString();
+    try {
+        const r1 = db.prepare("DELETE FROM on_verify_codes WHERE expires_at < ? OR used = 1").run(now).changes;
+        const r2 = db.prepare("DELETE FROM on_users WHERE reset_token_expires < ?").run(now).changes;
+        const r3 = db.prepare('DELETE FROM on_rate_limits WHERE window_start < ?').run(Date.now() - 86400000).changes;
+        if (r1 + r2 + r3 > 0) {
+            console.log(`🧹 清理过期数据: 验证码 ${r1} 条, 重置令牌 ${r2} 条, 频率限制 ${r3} 条`);
+        }
+    } catch (e) {
+        // 忽略（可能是表不存在）
+    }
+}
+
+// ---------- 验证码生成 ----------
+function generateVerifyCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// ---------- 辅助函数 ----------
 function getSiteSettings() {
     const row = db.prepare('SELECT value FROM on_options WHERE key = ?').get('site_settings');
-    return row ? JSON.parse(row.value) : {
+    const settings = row ? JSON.parse(row.value) : {
         title: '我的导航站',
         subtitle: '简洁实用的书签管理',
         description: '个人书签导航系统',
         keywords: '导航,书签,收藏,工具',
         link_num: 50
     };
+    
+    // 从 on_options 读取 SMTP 配置
+    const smtpKeys = ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_pass', 'email_from'];
+    smtpKeys.forEach(key => {
+        const r = db.prepare('SELECT value FROM on_options WHERE key = ?').get(key);
+        if (r) settings[key] = r.value;
+    });
+    
+    return settings;
 }
 
 function isLoggedIn(req) {
@@ -399,31 +537,32 @@ function verifyPassword(inputPassword, storedHash, username) {
 
 // 登录处理
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    // 频率限制
+    const limit = checkRateLimit('login');
+    if (!limit.allowed) {
+        return res.render('login', { error: limit.msg });
+    }
     
+    const { username, password } = req.body;
     const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(username);
     
     if (user && verifyPassword(password, user.password, username)) {
         req.session.loggedIn = true;
         req.session.username = user.username;
+        auditLog('login-success', username, req);
         res.redirect('/admin');
     } else {
+        auditLog('login-fail', username || 'unknown', req, '用户名或密码错误');
         res.render('login', { error: '用户名或密码错误' });
     }
 });
 
 // 登出
 app.get('/logout', (req, res) => {
+    auditLog('logout', req.session.username, req);
     req.session.destroy();
     res.redirect('/');
 });
-
-// ============ 密码安全功能 ============
-
-// 生成验证码
-function generateVerifyCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 // 发送邮件（需配置SMTP）
 async function sendEmail(to, subject, html) {
@@ -439,7 +578,7 @@ async function sendEmail(to, subject, html) {
         secure: settings.smtp_secure !== '0',
         auth: {
             user: settings.smtp_user,
-            pass: settings.smtp_pass
+            pass: decryptSMTP(settings.smtp_pass)
         }
     });
     
@@ -463,6 +602,12 @@ app.get('/admin/change-password', (req, res) => {
 app.post('/admin/change-password', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
+    }
+    
+    // 频率限制
+    const limit = checkRateLimit('change-password');
+    if (!limit.allowed) {
+        return res.render('change-password', { error: limit.msg, success: null });
     }
     
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -495,6 +640,7 @@ app.post('/admin/change-password', (req, res) => {
     const newHash = bcrypt.hashSync(newPassword, 10);
     db.prepare("UPDATE on_users SET password = ?, password_changed_at = datetime('now') WHERE username = ?").run(newHash, username);
     
+    auditLog('password-change', username, req);
     res.render('change-password', { error: null, success: '密码修改成功' });
 });
 
@@ -521,6 +667,13 @@ app.post('/admin/bind-email', (req, res) => {
         return res.redirect('/login');
     }
     
+    // 频率限制
+    const limit = checkRateLimit('send-code');
+    if (!limit.allowed) {
+        const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(req.session.username);
+        return res.render('admin-profile', { user, settings: getSiteSettings(), error: limit.msg, success: null });
+    }
+    
     const { email } = req.body;
     const username = req.session.username;
     
@@ -541,6 +694,7 @@ app.post('/admin/bind-email', (req, res) => {
         <p>验证码5分钟内有效。</p>
         <p>如果您没有请求此验证码，请忽略此邮件。</p>
     `).then(() => {
+        auditLog('bind-email-send', username, req, '发送到: ' + email);
         res.render('admin-profile', { 
             user: { ...db.prepare('SELECT * FROM on_users WHERE username = ?').get(username), pending_email: email },
             settings: getSiteSettings(),
@@ -585,6 +739,7 @@ app.post('/admin/verify-email', (req, res) => {
     // 更新用户邮箱
     db.prepare('UPDATE on_users SET email = ?, email_verified = 1 WHERE username = ?').run(email, username);
     
+    auditLog('bind-email-verify', username, req, '已绑定: ' + email);
     res.render('admin-profile', { 
         user: db.prepare('SELECT * FROM on_users WHERE username = ?').get(username),
         settings: getSiteSettings(),
@@ -600,6 +755,12 @@ app.get('/forgot-password', (req, res) => {
 
 // 发送重置邮件
 app.post('/forgot-password/send', (req, res) => {
+    // 频率限制
+    const limit = checkRateLimit('forgot-password');
+    if (!limit.allowed) {
+        return res.render('forgot-password', { error: limit.msg, success: null, step: 'email' });
+    }
+    
     const { email } = req.body;
     
     const user = db.prepare('SELECT * FROM on_users WHERE email = ?').get(email);
@@ -624,6 +785,7 @@ app.post('/forgot-password/send', (req, res) => {
         <p>或复制此链接：${resetUrl}</p>
         <p>如果您没有申请重置密码，请忽略此邮件。</p>
     `).then(() => {
+        auditLog('forgot-password-send', user.username, req, '发送到: ' + email);
         res.render('forgot-password', { error: null, success: '重置邮件已发送，请查收', step: 'done' });
     }).catch(err => {
         res.render('forgot-password', { error: '发送失败: ' + err.message, success: null, step: 'email' });
@@ -653,6 +815,13 @@ app.get('/reset-password', (req, res) => {
 
 // 执行重置密码
 app.post('/reset-password', (req, res) => {
+    // 频率限制（按 token 限制，防止暴力破解）
+    const limitKey = 'reset-password:' + (req.body.token || 'unknown');
+    const limit = checkRateLimit(limitKey);
+    if (!limit.allowed) {
+        return res.render('reset-password', { error: limit.msg, success: null, valid: true, token: req.body.token });
+    }
+    
     const { token, newPassword, confirmPassword } = req.body;
     
     // 验证token
@@ -678,6 +847,7 @@ app.post('/reset-password', (req, res) => {
     const newHash = bcrypt.hashSync(newPassword, 10);
     db.prepare("UPDATE on_users SET password = ?, password_changed_at = datetime('now'), reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(newHash, user.id);
     
+    auditLog('password-reset', user.username, req, '密码通过邮件重置链接重置');
     res.render('reset-password', { error: null, success: '密码重置成功，请登录', valid: false });
 });
 
@@ -699,14 +869,16 @@ app.post('/admin/email-settings', (req, res) => {
     
     const { smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, email_from } = req.body;
     
-    const stmt = db.prepare('INSERT OR REPLACE INTO on_settings (key, value) VALUES (?, ?)');
+    // 使用 on_options 表存储（smtp_pass 加密存储）
+    const stmt = db.prepare('INSERT OR REPLACE INTO on_options (key, value) VALUES (?, ?)');
     stmt.run('smtp_host', smtp_host || '');
     stmt.run('smtp_port', smtp_port || '465');
     stmt.run('smtp_secure', smtp_secure ? '1' : '0');
     stmt.run('smtp_user', smtp_user || '');
-    stmt.run('smtp_pass', smtp_pass || '');
+    stmt.run('smtp_pass', smtp_pass ? encryptSMTP(smtp_pass) : ''); // 加密存储
     stmt.run('email_from', email_from || '');
     
+    auditLog('email-settings-save', req.session.username, req, '邮件设置已保存');
     res.render('admin-email-settings', { settings: getSiteSettings(), error: null, success: '保存成功' });
 });
 
@@ -716,10 +888,19 @@ app.post('/admin/test-email', (req, res) => {
         return res.json({ success: false, error: '未登录' });
     }
     
+    // 频率限制
+    const limit = checkRateLimit('send-code');
+    if (!limit.allowed) {
+        return res.json({ success: false, error: limit.msg });
+    }
+    
     const { test_email } = req.body;
     
     sendEmail(test_email, '【MyNav】测试邮件', '<p>这是一封测试邮件，邮件服务配置正确！</p>')
-        .then(() => res.json({ success: true }))
+        .then(() => {
+            auditLog('test-email', req.session.username, req, '发送到: ' + test_email);
+            res.json({ success: true });
+        })
         .catch(err => res.json({ success: false, error: err.message }));
 });
 
@@ -1117,6 +1298,10 @@ app.post('/admin/restore', upload.single('backup'), (req, res) => {
 
 // 启动服务器
 initDatabase();
+
+// 启动时清理过期数据，并每小时清理一次
+cleanupExpired();
+setInterval(cleanupExpired, 60 * 60 * 1000);
 
 console.log('');
 console.log('================================');
