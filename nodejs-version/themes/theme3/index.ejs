@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= siteName %></title>
-    <meta name="keywords" content="<%= settings.keywords || '' %>">
-    <meta name="description" content="<%= settings.description || '' %>">
+    <title><%= escapeHtml(siteName) %></title>
+    <meta name="keywords" content="<%= escapeHtml(settings.keywords || '') %>">
+    <meta name="description" content="<%= escapeHtml(settings.description || '') %>">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <%- typeof custom_header !== 'undefined' ? custom_header : '' %>
@@ -78,6 +78,16 @@
             padding: 8px 0;
         }
         .search-box input::placeholder { color: #aaa; }
+        .search-status {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+        .search-status.has-results {
+            color: #f39c12;
+        }
         /* Category tabs */
         .cat-tabs-wrap {
             position: relative;
@@ -298,33 +308,86 @@
             font-size: 12px;
             color: rgba(255,255,255,0.3);
         }
-        /* Theme switch */
-        .theme-switch {
+        /* Dark/Light mode toggle */
+        .mode-toggle {
             position: fixed;
             top: 70px;
             right: 14px;
             z-index: 999;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
         }
-        .theme-btn {
-            padding: 5px 12px;
-            font-size: 11px;
-            border-radius: 20px;
+        .mode-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             border: 1px solid rgba(255,255,255,0.15);
             background: rgba(26,26,46,0.8);
             color: rgba(255,255,255,0.5);
             cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-            white-space: nowrap;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
         }
-        .theme-btn:hover, .theme-btn.active {
+        .mode-btn:hover { border-color: #f39c12; color: #f39c12; }
+        /* Light mode overrides */
+        body.light-mode {
+            background-color: #f5f5f5;
+            background-image: none;
+            color: #333;
+        }
+        body.light-mode::before { background: rgba(245,245,245,0.95); }
+        body.light-mode .navbar-custom {
+            background: #fff !important;
+            border-bottom-color: rgba(0,0,0,0.08);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        body.light-mode .navbar-brand-custom { color: #333 !important; }
+        body.light-mode .navbar-brand-custom i { color: #f39c12; }
+        body.light-mode .nav-link { color: #666 !important; }
+        body.light-mode .search-box {
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        body.light-mode .search-box input { color: #333; }
+        body.light-mode .search-box input::placeholder { color: #aaa; }
+        body.light-mode .search-box .fa-search { color: #999; }
+        body.light-mode .cat-tab {
+            border-color: rgba(0,0,0,0.1);
+            background: #fff;
+            color: #666;
+        }
+        body.light-mode .cat-tab:hover, body.light-mode .cat-tab.active {
+            background: rgba(243,156,18,0.1);
             border-color: #f39c12;
             color: #f39c12;
-            background: rgba(243,156,18,0.1);
         }
+        body.light-mode .cat-title { color: #333; }
+        body.light-mode .bm-card {
+            background: #fff;
+            border-color: rgba(0,0,0,0.06);
+        }
+        body.light-mode .bm-card:hover {
+            border-color: rgba(243,156,18,0.4);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+        body.light-mode .bm-title { color: #333; }
+        body.light-mode .bm-desc { color: #888; }
+        body.light-mode .bm-url { color: #aaa; }
+        body.light-mode .bm-actions { background: rgba(0,0,0,0.03); }
+        body.light-mode .cat-count { background: rgba(0,0,0,0.05); color: #888; }
+        body.light-mode .cat-scroll-btn {
+            border-color: rgba(0,0,0,0.1);
+            background: #fff;
+            color: #666;
+        }
+        body.light-mode .site-footer { color: #aaa; }
+        body.light-mode .mode-btn {
+            background: #fff;
+            border-color: rgba(0,0,0,0.1);
+            color: #666;
+        }
+        body.light-mode .mode-btn:hover { border-color: #f39c12; color: #f39c12; }
         /* No results */
         .no-result {
             text-align: center;
@@ -341,7 +404,7 @@
     <div class="container">
         <a class="navbar-brand navbar-brand-custom" href="/">
             <i class="fa fa-bookmark"></i>
-            <%= siteName %>
+            <%= escapeHtml(siteName) %>
         </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navMenu">
             <span class="navbar-toggler-icon"></span>
@@ -354,20 +417,20 @@
     </div>
 </nav>
 
-<!-- Theme Switch -->
-<div class="theme-switch">
-    <a href="/?theme=1" class="theme-btn <%= currentTheme == '1' ? 'active' : '' %>">🌐 主题1</a>
-    <a href="/?theme=2" class="theme-btn <%= currentTheme == '2' ? 'active' : '' %>">🔷 主题2</a>
-    <a href="/?theme=3" class="theme-btn <%= currentTheme == '3' ? 'active' : '' %>">🔶 主题3</a>
+<!-- Dark/Light Mode Toggle -->
+<div class="mode-toggle">
+    <button class="mode-btn" id="modeBtn" title="切换明暗模式">🌙</button>
 </div>
 
 <div class="main-container">
     <!-- Search -->
     <div class="search-section">
-        <div class="search-box">
+        <div class="search-box" style="padding-right:8px">
             <i class="fa fa-search"></i>
             <input type="text" id="searchInput" placeholder="搜索书签..." autocomplete="off">
+            <button id="clearSearch" style="background:none;border:none;font-size:14px;cursor:pointer;color:#bbb;padding:4px 6px;display:none;line-height:1">✕</button>
         </div>
+        <div class="search-status" id="searchStatus"></div>
     </div>
 
     <!-- Category tabs -->
@@ -377,7 +440,7 @@
             <div class="cat-tabs">
                 <span class="cat-tab active" data-cat="all"><i class="fa fa-home"></i> 全部</span>
                 <% categories.forEach(function(cat) { %>
-                    <span class="cat-tab" data-cat="<%= cat.id %>"><%= cat.icon %> <%= cat.name %></span>
+                    <span class="cat-tab" data-cat="<%= cat.id %>"><i class="fas <%= cat.font_icon %>"></i> <%= escapeHtml(cat.name) %></span>
                 <% }); %>
             </div>
         </div>
@@ -392,29 +455,31 @@
             <% categories.forEach(function(cat) { %>
                 <div class="cat-section" id="cat-section-<%= cat.id %>">
                     <div class="cat-title-row">
-                        <div class="cat-title"><%= cat.icon %> <%= cat.name %></div>
+                        <div class="cat-title"><i class="fas <%= cat.font_icon %>"></i> <%= escapeHtml(cat.name) %></div>
                         <span class="cat-count"><%= cat.links.length %></span>
                     </div>
                     <div class="bm-grid">
                         <% cat.links.forEach(function(link) { %>
-                            <div class="bm-card" data-title="<%= link.title %>" data-url="<%= link.url %>" data-desc="<%= link.description || '' %>">
-                                <a href="<%= link.url %>" class="bm-link" target="_blank">
+                            <div class="bm-card" data-title="<%= escapeHtml(link.title) %>" data-url="<%= escapeHtml(link.url) %>" data-desc="<%= escapeHtml(link.description || '') %>">
+                                <a href="<%= escapeHtml(link.url) %>" class="bm-link" target="_blank">
                                     <div class="bm-header">
                                         <div class="bm-favicon">
-                                            <% if (link.favicon) { %>
-                                                <img src="<%= link.favicon %>" onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
-                                            <% } else { %>
-                                                <i class="fa fa-link"></i>
-                                            <% } %>
+                                            <%
+                                                var faviconDomain3 = '';
+                                                try { faviconDomain3 = new URL(link.url).hostname; } catch(e) {}
+                                            %>
+                                            <img src="https://favicon.im/<%= escapeHtml(faviconDomain3) %>.png"
+                                                 style="width:28px;height:28px;border-radius:6px;object-fit:contain;"
+                                                 onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
                                         </div>
-                                        <div class="bm-title"><%= link.title %></div>
+                                        <div class="bm-title"><%= escapeHtml(link.title) %></div>
                                     </div>
-                                    <div class="bm-desc"><%= link.description || '' %></div>
+                                    <div class="bm-desc"><%= escapeHtml(link.description || '') %></div>
                                     <div class="bm-url"></div>
                                 </a>
                                 <div class="bm-actions">
-                                    <button class="bm-action-btn copy-btn" data-url="<%= link.url %>" title="复制链接"><i class="fa fa-copy"></i></button>
-                                    <button class="bm-action-btn qr-btn" data-url="<%= link.url %>" data-title="<%= link.title %>" title="二维码"><i class="fa fa-qrcode"></i></button>
+                                    <button class="bm-action-btn copy-btn" data-url="<%= escapeHtml(link.url) %>" title="复制链接"><i class="fa fa-copy"></i></button>
+                                    <button class="bm-action-btn qr-btn" data-url="<%= escapeHtml(link.url) %>" data-title="<%= escapeHtml(link.title) %>" title="二维码"><i class="fa fa-qrcode"></i></button>
                                 </div>
                             </div>
                         <% }); %>
@@ -425,7 +490,7 @@
     </div>
 
     <div class="site-footer">
-        &copy; <%= new Date().getFullYear() %> <%= siteName %>
+        &copy; <%= new Date().getFullYear() %> <%= escapeHtml(siteName) %>
     </div>
 </div>
 
@@ -527,23 +592,106 @@ var inner = document.getElementById('catTabsInner');
 document.getElementById('catPrev').addEventListener('click', function() { inner.scrollLeft -= 200; });
 document.getElementById('catNext').addEventListener('click', function() { inner.scrollLeft += 200; });
 
-// Search filter
+// Search filter - 实时客户端筛选（应用启动器 UX 风格）
 var searchInput = document.getElementById('searchInput');
+var clearBtn = document.getElementById('clearSearch');
+var searchStatus = document.getElementById('searchStatus');
 var allLinks = <%- JSON.stringify(allLinks) %>;
+var searchTimer = null;
 
-searchInput.addEventListener('input', function() {
-    var q = this.value.trim().toLowerCase();
+function doFilter() {
+    var q = searchInput.value.trim();
+    
+    // 清空按钮显隐
+    clearBtn.style.display = q ? 'block' : 'none';
+    
+    // 空搜索：还原全部
     if (!q) {
         document.querySelectorAll('.bm-card').forEach(function(c) { c.style.display = ''; });
         document.querySelectorAll('.cat-section').forEach(function(s) { s.style.display = ''; });
+        document.querySelectorAll('.cat-tab').forEach(function(t) { t.style.display = ''; });
+        searchStatus.textContent = '';
+        searchStatus.className = 'search-status';
         return;
     }
-    document.querySelectorAll('.bm-card').forEach(function(card) {
-        var match = card.dataset.title.toLowerCase().indexOf(q) >= 0 ||
-            (card.dataset.desc && card.dataset.desc.toLowerCase().indexOf(q) >= 0);
-        card.style.display = match ? '' : 'none';
-    });
+    
+    // 实时筛选（50ms 防抖，极速反馈）
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(function() {
+        var qLower = q.toLowerCase();
+        var visibleCount = 0;
+        var totalCount = 0;
+        
+        // 统计全部书签数
+        document.querySelectorAll('.bm-card').forEach(function() { totalCount++; });
+        
+        // 筛选书签卡片
+        document.querySelectorAll('.bm-card').forEach(function(card) {
+            var match = card.dataset.title.toLowerCase().indexOf(qLower) >= 0 ||
+                (card.dataset.desc && card.dataset.desc.toLowerCase().indexOf(qLower) >= 0) ||
+                card.dataset.url.toLowerCase().indexOf(qLower) >= 0;
+            card.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        
+        // 隐藏没有可见书签的分类
+        document.querySelectorAll('.cat-section').forEach(function(section) {
+            var anyVisible = section.querySelector('.bm-card:not([style*="display: none"])');
+            section.style.display = anyVisible ? '' : 'none';
+        });
+        
+        // 隐藏没有书签的分类 tab
+        document.querySelectorAll('.cat-section').forEach(function(section) {
+            var catId = section.id.replace('cat-section-', '');
+            var tab = document.querySelector('.cat-tab[data-cat="' + catId + '"]');
+            var anyVisible = section.querySelector('.bm-card:not([style*="display: none"])');
+            if (tab) tab.style.display = anyVisible ? '' : 'none';
+        });
+        
+        // 显示搜索状态（启动器风格）
+        if (visibleCount === 0) {
+            searchStatus.textContent = '😢 没有找到 "' + q + '"，试试其他关键词';
+            searchStatus.className = 'search-status';
+        } else {
+            searchStatus.textContent = '✨ 找到 ' + visibleCount + ' 个结果（输入继续筛选）';
+            searchStatus.className = 'search-status has-results';
+        }
+    }, 50);
+}
+
+searchInput.addEventListener('input', doFilter);
+
+// 清空按钮
+clearBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    doFilter();
+    searchInput.focus();
 });
+
+// ESC 清空搜索
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        searchInput.value = '';
+        doFilter();
+        searchInput.blur();
+    }
+});
+
+// Dark/Light mode toggle
+(function() {
+    var btn = document.getElementById('modeBtn');
+    var saved = localStorage.getItem('mynav-mode');
+    if (saved === 'light') {
+        document.body.classList.add('light-mode');
+        btn.textContent = '☀️';
+    }
+    btn.addEventListener('click', function() {
+        document.body.classList.toggle('light-mode');
+        var isLight = document.body.classList.contains('light-mode');
+        btn.textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem('mynav-mode', isLight ? 'light' : 'dark');
+    });
+})();
 </script>
 </body>
 </html>

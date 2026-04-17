@@ -105,6 +105,9 @@
             text-align: center;
         }
         
+        .stat-card.stat-clickable { cursor: pointer; display: block; text-decoration: none; }
+        .stat-card.stat-clickable:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+        
         .stat-card i { font-size: 2rem; margin-bottom: 10px; }
         .stat-card .stat-number { font-size: 2.5rem; font-weight: bold; }
         .stat-card .stat-label { font-size: 14px; opacity: 0.9; }
@@ -190,6 +193,62 @@
         }
         
         .message.success { background: #d4edda; color: #155724; }
+        
+        /* 链接筛选栏 */
+        .filter-bar {
+            padding: 14px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .filter-input {
+            padding: 7px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 160px;
+        }
+        
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: normal;
+            background: var(--primary);
+            color: #fff;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        
+        .cat-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #e9ecef;
+            color: #495057;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cat-parent { color: #6c757d; font-size: 12px; }
+        .status-show { color: #28a745; font-weight: 500; }
+        .status-hidden { color: #6c757d; font-weight: 500; }
+        .cat-row { cursor: pointer; }
+        .cat-row:hover { background: #f8f9fa; }
+        .cat-edit-form { margin: 8px 0; }
+        .edit-fields { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .edit-fields span { display: inline-flex; align-items: center; gap: 2px; }
+        .edit-fields label { font-size: 12px; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+        .edit-fields input, .edit-fields select { padding: 3px 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; }
+        
         .message.error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
@@ -205,6 +264,8 @@
             <li><a href="/admin/category" class="<%= action === 'category' ? 'active' : '' %>"><i class="fas fa-folder"></i> <span>分类管理</span></a></li>
             <li><a href="/admin/link" class="<%= action === 'link' ? 'active' : '' %>"><i class="fas fa-link"></i> <span>链接管理</span></a></li>
             <li><a href="/admin/settings" class="<%= action === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> <span>系统设置</span></a></li>
+            <li><a href="/admin/profile"><i class="fas fa-user-cog"></i> <span>个人设置</span></a></li>
+            <li><a href="/admin/change-password"><i class="fas fa-key"></i> <span>修改密码</span></a></li>
             <li><a href="/" target="_blank"><i class="fas fa-home"></i> <span>访问首页</span></a></li>
             <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>退出登录</span></a></li>
         </ul>
@@ -225,16 +286,16 @@
             <% } %>
 
             <div class="stats-grid">
-                <div class="stat-card">
+                <a href="/admin/category" class="stat-card stat-clickable">
                     <i class="fas fa-folder"></i>
                     <div class="stat-number"><%= stats.categories %></div>
                     <div class="stat-label">分类数量</div>
-                </div>
-                <div class="stat-card">
+                </a>
+                <a href="/admin/link" class="stat-card stat-clickable">
                     <i class="fas fa-link"></i>
                     <div class="stat-number"><%= stats.links %></div>
                     <div class="stat-label">链接总数</div>
-                </div>
+                </a>
                 <div class="stat-card">
                     <i class="fas fa-clock"></i>
                     <div class="stat-number"><%= stats.todayLinks %></div>
@@ -279,26 +340,35 @@
             </div>
             
             <div class="card">
-                <div class="card-header"><h3>分类列表</h3></div>
+                <div class="card-header"><h3>分类列表 (点击行编辑)</h3></div>
                 <table class="data-table">
                     <thead>
-                        <tr><th>ID</th><th>名称</th><th>类型</th><th>显示</th><th>权重</th><th>操作</th></tr>
+                        <tr><th>ID</th><th>父分类 / 名称</th><th>图标 / 权重</th><th>显示</th><th>操作</th></tr>
                     </thead>
                     <tbody>
                         <% categories.forEach(function(cat) { %>
-                            <tr>
+                            <% 
+                                var parentName = '';
+                                if (cat.fid > 0) {
+                                    categories.forEach(function(p) { if (p.id == cat.fid) parentName = p.name; });
+                                }
+                            %>
+                            <tr class="cat-row" onclick="toggleCatEdit(<%= cat.id %>)">
                                 <td><%= cat.id %></td>
-                                <td><i class="fas <%= cat.font_icon %>"></i> <%= cat.name %></td>
-                                <td><%= cat.fid === 0 ? '一级分类' : '二级分类' %></td>
+                                <td>
+                                    <% if (parentName) { %><span class="cat-parent"><%= parentName %></span> / <% } %><%= cat.name %>
+                                </td>
+                                <td>
+                                    <i class="fas <%= cat.font_icon %>"></i> / <%= cat.weight %>
+                                </td>
                                 <td>
                                     <% if (cat.hidden == 1) { %>
-                                        <span style="color: #999;">隐藏</span>
+                                        <span class="status-hidden">隐藏</span>
                                     <% } else { %>
-                                        <span style="color: green;">显示</span>
+                                        <span class="status-show">显示</span>
                                     <% } %>
                                 </td>
-                                <td><%= cat.weight %></td>
-                                <td>
+                                <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/category/toggle" style="display: inline;">
                                         <input type="hidden" name="id" value="<%= cat.id %>">
                                         <button type="submit" class="btn btn-sm"><%= cat.hidden == 1 ? '显示' : '隐藏' %></button>
@@ -309,16 +379,49 @@
                                     </form>
                                 </td>
                             </tr>
+                            <!-- 分类编辑行 -->
+                            <tr class="cat-edit-row" id="cat-edit-<%= cat.id %>" style="display:none;">
+                                <td colspan="5">
+                                    <form method="POST" action="/admin/category/update" class="cat-edit-form">
+                                        <input type="hidden" name="id" value="<%= cat.id %>">
+                                        <div class="edit-fields">
+                                            <span><label>名称: <input type="text" name="name" value="<%= cat.name %>" required style="width:100px;"></label></span>
+                                            <span><label>父分类: 
+                                                <select name="fid" style="width:100px;">
+                                                    <option value="0" <%= cat.fid==0?'selected':'' %>>一级</option>
+                                                    <% categories.forEach(function(p) { if (p.fid==0 && p.id!=cat.id) { %>
+                                                        <option value="<%= p.id %>" <%= cat.fid==p.id?'selected':'' %>><%= p.name %></option>
+                                                    <% }}); %>
+                                                </select>
+                                            </label></span>
+                                            <span><label>图标: <input type="text" name="font_icon" value="<%= cat.font_icon %>" placeholder="fa-folder" style="width:80px;"></label></span>
+                                            <span><label>权重: <input type="number" name="weight" value="<%= cat.weight %>" style="width:50px;"></label></span>
+                                            <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleCatEdit(<%= cat.id %>)">取消</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
                         <% }); %>
                     </tbody>
                 </table>
             </div>
+            <script>
+            function toggleCatEdit(id) {
+                var row = document.getElementById('cat-edit-' + id);
+                row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+            }
+            </script>
             
         <% } else if (action === 'link') { %>
             <div class="page-header">
                 <h1><i class="fas fa-link"></i> 链接管理</h1>
                 <p>管理书签链接</p>
             </div>
+            
+            <% if (message) { %>
+            <div class="alert alert-success"><i class="fas fa-check-circle"></i> <%= message %></div>
+            <% } %>
             
             <div class="card">
                 <div class="card-header"><h3>添加链接</h3></div>
@@ -352,26 +455,87 @@
             </div>
             
             <div class="card">
-                <div class="card-header"><h3>链接列表</h3></div>
+                <div class="card-header">
+                    <h3>
+                        链接列表
+                        <% if (searchQuery || filterFid) { %>
+                            <span class="badge">筛选结果: <%= links.length %> 条</span>
+                        <% } else { %>
+                            <span class="badge">共 <%= stats.links %> 条</span>
+                        <% } %>
+                    </h3>
+                </div>
+                <!-- 搜索 & 筛选 -->
+                <div class="filter-bar">
+                    <form method="GET" action="/admin/link" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" name="q" value="<%= searchQuery %>" placeholder="搜索标题或URL…" class="filter-input">
+                        <select name="fid" class="filter-input">
+                            <option value="">全部分类</option>
+                            <% categories.forEach(function(cat) { %>
+                                <option value="<%= cat.id %>" <%= (filterFid == cat.id) ? 'selected' : '' %>>
+                                    <%= cat.fid === 0 ? '' : '└─ ' %><%= cat.name %>
+                                </option>
+                            <% }); %>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> 搜索</button>
+                        <% if (searchQuery || filterFid) { %>
+                            <a href="/admin/link" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> 清除筛选</a>
+                        <% } %>
+                    </form>
+                </div>
                 <table class="data-table">
                     <thead>
-                        <tr><th>标题</th><th>URL</th><th>分类</th><th>置顶</th><th>操作</th></tr>
+                        <tr><th>标题</th><th>URL</th><th>分类</th><th>权重</th><th>置顶</th><th>操作</th></tr>
                     </thead>
                     <tbody>
+                        <% if (links.length === 0) { %>
+                            <tr><td colspan="5" style="text-align:center;color:#999;padding:20px;">暂无链接</td></tr>
+                        <% } %>
                         <% links.forEach(function(link) { %>
-                            <tr>
+                            <% 
+                                var catName = '未知分类';
+                                categories.forEach(function(c) {
+                                    if (c.id == link.fid) catName = c.name;
+                                });
+                            %>
+                            <tr class="link-row" onclick="toggleLinkEdit(<%= link.id %>)">
                                 <td><%= link.title %></td>
-                                <td><a href="<%= link.url %>" target="_blank"><%= link.url.substring(0, 40) %></a></td>
-                                <td><%= link.fid %></td>
-                                <td><%= link.topping ? '是' : '否' %></td>
-                                <td>
+                                <td><a href="<%= link.url %>" target="_blank"><%= link.url.length > 40 ? link.url.substring(0, 40) + '…' : link.url %></a></td>
+                                <td><span class="cat-tag"><%= catName %></span></td>
+                                <td><%= link.weight %></td>
+                                <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/link/toggle-top" style="display: inline;">
                                         <input type="hidden" name="id" value="<%= link.id %>">
-                                        <button type="submit" class="btn btn-primary btn-sm"><%= link.topping ? '取消置顶' : '置顶' %></button>
+                                        <button type="submit" class="btn btn-sm <%= link.topping ? 'btn-warning' : 'btn-primary' %>"><%= link.topping ? '取消置顶' : '置顶' %></button>
                                     </form>
+                                </td>
+                                <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/link/delete" style="display: inline;" onsubmit="return confirm('确定删除？')">
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- 链接编辑行 -->
+                            <tr class="link-edit-row" id="link-edit-<%= link.id %>" style="display:none;">
+                                <td colspan="6">
+                                    <form method="POST" action="/admin/link/update" class="link-edit-form">
+                                        <input type="hidden" name="id" value="<%= link.id %>">
+                                        <div class="edit-fields">
+                                            <span><label>标题: <input type="text" name="title" value="<%= link.title %>" required style="width:120px;"></label></span>
+                                            <span><label>URL: <input type="url" name="url" value="<%= link.url %>" required style="width:150px;"></label></span>
+                                            <span><label>分类: 
+                                                <select name="fid" style="width:100px;">
+                                                    <% categories.forEach(function(c) { %>
+                                                        <option value="<%= c.id %>" <%= link.fid==c.id?'selected':'' %>><%= c.name %></option>
+                                                    <% }); %>
+                                                </select>
+                                            </label></span>
+                                            <span><label>权重: <input type="number" name="weight" value="<%= link.weight %>" style="width:50px;"></label></span>
+                                            <span><label>描述: <input type="text" name="description" value="<%= link.description || '' %>" style="width:100px;"></label></span>
+                                            <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleLinkEdit(<%= link.id %>)">取消</button>
+                                        </div>
                                     </form>
                                 </td>
                             </tr>
@@ -379,6 +543,12 @@
                     </tbody>
                 </table>
             </div>
+            <script>
+            function toggleLinkEdit(id) {
+                var row = document.getElementById('link-edit-' + id);
+                row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+            }
+            </script>
             
         <% } else if (action === 'settings') { %>
             <div class="page-header">
@@ -423,6 +593,14 @@
                             <option value="3" <%= settings.theme === '3' ? 'selected' : '' %>>主题3 - 卡片风格（固定导航栏）</option>
                         </select>
                         <small class="form-text text-muted">选择网站首页默认显示的主题风格</small>
+                    </div>
+                    <div class="form-group">
+                        <label>搜索模式</label>
+                        <select name="auto_search" class="form-control">
+                            <option value="1" <%= settings.auto_search === '1' || settings.auto_search === 1 ? 'selected' : '' %>>自动搜索（输入2个字符自动触发）</option>
+                            <option value="0" <%= settings.auto_search === '0' || settings.auto_search === 0 || settings.auto_search === '' ? 'selected' : '' %>>手动搜索（按回车触发）</option>
+                        </select>
+                        <small class="form-text text-muted">选择首页搜索框的触发方式</small>
                     </div>
                     <div class="form-group">
                         <label>自定义 Header</label>

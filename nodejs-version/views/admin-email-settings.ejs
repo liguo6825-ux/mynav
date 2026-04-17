@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮件设置 - MyNav</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .header h1 { font-size: 20px; }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+        }
+        .card-body { padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input[type="text"], input[type="password"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-label input {
+            width: auto;
+        }
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-outline {
+            background: white;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .success {
+            background: #efe;
+            color: #060;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .preset-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .preset-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .preset-btn:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-envelope"></i> 邮件服务设置</h1>
+    </div>
+    
+    <div class="container">
+        <div class="nav-links">
+            <a href="/admin"><i class="fas fa-arrow-left"></i> 返回后台</a>
+            <a href="/admin/profile"><i class="fas fa-user-cog"></i> 个人设置</a>
+        </div>
+        
+        <% if (error) { %>
+            <div class="error"><%= error %></div>
+        <% } %>
+        
+        <% if (success) { %>
+            <div class="success"><%= success %></div>
+        <% } %>
+        
+        <div class="card">
+            <div class="card-header">快速配置</div>
+            <div class="card-body">
+                <p style="color:#666;margin-bottom:10px">点击自动填充常用SMTP配置：</p>
+                <div class="preset-btns">
+                    <button class="preset-btn" onclick="fillPreset('qq')">QQ邮箱</button>
+                    <button class="preset-btn" onclick="fillPreset('163')">163邮箱</button>
+                    <button class="preset-btn" onclick="fillPreset('gmail')">Gmail</button>
+                    <button class="preset-btn" onclick="fillPreset('aliyun')">阿里云</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">SMTP配置</div>
+            <div class="card-body">
+                <form method="POST" action="/admin/email-settings">
+                    <div class="form-group">
+                        <label>SMTP服务器</label>
+                        <input type="text" name="smtp_host" id="smtp_host" value="<%= settings.smtp_host || '' %>" placeholder="smtp.example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>端口</label>
+                        <input type="number" name="smtp_port" id="smtp_port" value="<%= settings.smtp_port || 465 %>" placeholder="465">
+                        <div class="hint">SSL通常用465，TLS用587</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="smtp_secure" id="smtp_secure" <%= settings.smtp_secure !== '0' ? 'checked' : '' %>>
+                            使用SSL/TLS加密
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" name="smtp_user" id="smtp_user" value="<%= settings.smtp_user || '' %>" placeholder="邮箱地址或用户名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>密码/授权码</label>
+                        <input type="password" name="smtp_pass" id="smtp_pass" value="<%= settings.smtp_pass || '' %>" placeholder="邮箱密码或授权码">
+                        <div class="hint">QQ/163邮箱需使用授权码，非登录密码</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>发件人名称（可选）</label>
+                        <input type="text" name="email_from" value="<%= settings.email_from || '' %>" placeholder="MyNav <noreply@example.com>">
+                    </div>
+                    
+                    <button type="submit" class="btn"><i class="fas fa-save"></i> 保存配置</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">测试发送</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>测试邮箱</label>
+                    <input type="text" id="test_email" placeholder="接收测试邮件的邮箱地址">
+                </div>
+                <button class="btn btn-outline" onclick="testEmail()"><i class="fas fa-paper-plane"></i> 发送测试邮件</button>
+                <span id="test_result" style="margin-left:10px"></span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const presets = {
+            qq: { host: 'smtp.qq.com', port: 465, secure: true },
+            '163': { host: 'smtp.163.com', port: 465, secure: true },
+            gmail: { host: 'smtp.gmail.com', port: 587, secure: false },
+            aliyun: { host: 'smtp.aliyun.com', port: 465, secure: true }
+        };
+        
+        function fillPreset(type) {
+            const p = presets[type];
+            document.getElementById('smtp_host').value = p.host;
+            document.getElementById('smtp_port').value = p.port;
+            document.getElementById('smtp_secure').checked = p.secure;
+        }
+        
+        async function testEmail() {
+            const email = document.getElementById('test_email').value;
+            if (!email) {
+                alert('请输入测试邮箱');
+                return;
+            }
+            
+            const result = document.getElementById('test_result');
+            result.textContent = '发送中...';
+            result.style.color = '#666';
+            
+            try {
+                const res = await fetch('/admin/test-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test_email: email })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    result.textContent = '✓ 发送成功';
+                    result.style.color = 'green';
+                } else {
+                    result.textContent = '✗ ' + data.error;
+                    result.style.color = 'red';
+                }
+            } catch (e) {
+                result.textContent = '✗ 请求失败';
+                result.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>

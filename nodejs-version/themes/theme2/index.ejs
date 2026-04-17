@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= siteName %></title>
-    <meta name="keywords" content="<%= settings.keywords || '' %>">
-    <meta name="description" content="<%= settings.description || '' %>">
+    <title><%= escapeHtml(siteName) %></title>
+    <meta name="keywords" content="<%= escapeHtml(settings.keywords || '') %>">
+    <meta name="description" content="<%= escapeHtml(settings.description || '') %>">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <%- typeof custom_header !== 'undefined' ? custom_header : '' %>
@@ -232,6 +232,7 @@
             display: none;
             max-height: 240px;
             overflow-y: auto;
+            pointer-events: none;
         }
         .suggestions.show { display: block; }
         .suggestion-item {
@@ -241,11 +242,21 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            border-bottom: 1px solid rgba(240,246,252,0.06);
         }
-        .suggestion-item:hover { background: rgba(88,166,255,0.1); color: #fff; }
-        .suggestion-item .title { flex: 1; }
-        .suggestion-item .hint { font-size: 11px; color: #484f58; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: rgba(88,166,255,0.15); color: #fff; }
+        .suggestion-item .suggestion-icon {
+            width: 24px; height: 24px;
+            border-radius: 4px;
+            object-fit: contain;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .suggestion-item .suggestion-content { flex: 1; min-width: 0; }
+        .suggestion-item .title { display: block; font-weight: 500; }
+        .suggestion-item .hint { display: block; font-size: 11px; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         /* No results */
         .no-result {
             text-align: center;
@@ -253,36 +264,115 @@
             color: #8b949e;
             font-size: 14px;
         }
+        /* Search page results */
+        .search-page-results {
+            margin-top: 20px;
+        }
+        .search-title {
+            color: #c9d1d9;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .search-title i { color: #58a6ff; margin-right: 8px; }
+        }
         .no-result i { font-size: 40px; margin-bottom: 12px; display: block; color: #484f58; }
-        /* Theme switch */
-        .theme-switch {
+        /* Dark/Light mode toggle */
+        .mode-toggle {
             position: fixed;
             top: 14px;
             right: 14px;
             z-index: 999;
         }
-        .theme-btn {
-            padding: 5px 12px;
-            font-size: 11px;
-            border-radius: 20px;
+        .mode-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             border: 1px solid rgba(240,246,252,0.15);
             background: rgba(22,27,34,0.8);
             color: #8b949e;
             cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
         }
-        .theme-btn:hover { border-color: #58a6ff; color: #58a6ff; }
-        .theme-btn.active { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,0.1); }
+        .mode-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+        /* Light mode overrides */
+        body.light-mode {
+            background-color: #f6f8fa;
+            background-image: none;
+            color: #24292f;
+        }
+        body.light-mode::before {
+            background: rgba(246,248,250,0.95);
+        }
+        body.light-mode .site-logo { color: #24292f; }
+        body.light-mode .site-desc { color: #57606a; }
+        body.light-mode .search-area {
+            background: rgba(255,255,255,0.9);
+            border-color: rgba(27,31,36,0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        body.light-mode .search-input {
+            background: #fff;
+            border-color: rgba(27,31,36,0.15);
+            color: #24292f;
+        }
+        body.light-mode .search-input::placeholder { color: #8b949e; }
+        body.light-mode .search-input-wrap .fa-search { color: #8b949e; }
+        body.light-mode .engine-btn {
+            border-color: rgba(27,31,36,0.15);
+            color: #57606a;
+        }
+        body.light-mode .engine-btn:hover, body.light-mode .engine-btn.active {
+            border-color: #3f51b5;
+            color: #3f51b5;
+            background: rgba(63,81,181,0.08);
+        }
+        body.light-mode .cat-tag {
+            border-color: rgba(27,31,36,0.15);
+            background: #fff;
+            color: #57606a;
+        }
+        body.light-mode .cat-tag:hover, body.light-mode .cat-tag.active {
+            border-color: #3f51b5;
+            color: #3f51b5;
+            background: rgba(63,81,181,0.08);
+        }
+        body.light-mode .card {
+            background: #fff;
+            border-color: rgba(27,31,36,0.1);
+        }
+        body.light-mode .card:hover {
+            border-color: rgba(63,81,181,0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        body.light-mode .card-icon { background: rgba(63,81,181,0.1); color: #3f51b5; }
+        body.light-mode .card-title { color: #24292f; }
+        body.light-mode .card-desc { color: #57606a; }
+        body.light-mode .cat-title { color: #24292f; border-bottom-color: rgba(27,31,36,0.1); }
+        body.light-mode .cat-title i { color: #3f51b5; }
+        body.light-mode .suggestions {
+            background: #fff;
+            border-color: rgba(27,31,36,0.15);
+        }
+        body.light-mode .suggestion-item { color: #24292f; }
+        body.light-mode .suggestion-item:hover { background: rgba(63,81,181,0.06); color: #3f51b5; }
+        body.light-mode .site-footer { color: #8b949e; }
+        body.light-mode .mode-btn {
+            background: #fff;
+            border-color: rgba(27,31,36,0.15);
+            color: #57606a;
+        }
+        body.light-mode .mode-btn:hover { border-color: #3f51b5; color: #3f51b5; }
     </style>
 </head>
 <body>
 
-<!-- Theme Switch -->
-<div class="theme-switch">
-    <a href="/?theme=1" class="theme-btn <%= currentTheme == '1' ? 'active' : '' %>">🌐 主题1</a>
-    <a href="/?theme=2" class="theme-btn <%= currentTheme == '2' ? 'active' : '' %>">🔷 主题2</a>
-    <a href="/?theme=3" class="theme-btn <%= currentTheme == '3' ? 'active' : '' %>">🔶 主题3</a>
+<!-- Dark/Light Mode Toggle -->
+<div class="mode-toggle">
+    <button class="mode-btn" id="modeBtn" title="切换明暗模式">🌙</button>
 </div>
 
 <div class="site-wrap">
@@ -290,58 +380,57 @@
     <div class="site-header">
         <a href="/" class="site-logo">
             <i class="fa fa-bookmark"></i>
-            <span><%= siteName %></span>
+            <span><%= escapeHtml(siteName) %></span>
         </a>
         <div class="site-desc" id="dateTime"></div>
     </div>
 
     <!-- Search -->
     <div class="search-area">
-        <div class="engine-btns">
-            <button class="engine-btn active" data-engine="baidu" data-url="https://www.baidu.com/s?wd=">🌐 百度</button>
-            <button class="engine-btn" data-engine="bing" data-url="https://www.bing.com/search?q=">🌐 Bing</button>
-            <button class="engine-btn" data-engine="google" data-url="https://www.google.com/search?q=">🌐 Google</button>
-        </div>
         <div class="search-row">
             <div class="search-input-wrap" style="flex:1">
                 <i class="fa fa-search"></i>
-                <input type="text" class="search-input" id="searchInput" placeholder="搜索书签，按回车跳转..." autocomplete="off">
+                <input type="text" class="search-input" id="searchInput" placeholder="搜索书签（中英文、描述、网址）..." value="<%= searchQuery || '' %>" autocomplete="off">
+                <button id="clearSearch" style="background:none;border:none;font-size:13px;cursor:pointer;color:#484f58;padding:4px 6px;display:none;line-height:1;border-radius:4px">✕</button>
                 <div class="suggestions" id="suggestions"></div>
             </div>
         </div>
+        <div id="searchStatus" style="text-align:center;color:#484f58;font-size:12px;margin-top:6px;min-height:18px"></div>
     </div>
 
     <!-- Categories -->
     <div class="cat-list" id="catList">
         <span class="cat-tag active" data-cat="all"><i class="fa fa-globe"></i>全部</span>
         <% categories.forEach(function(cat) { %>
-            <span class="cat-tag" data-cat="<%= cat.id %>"><%= cat.icon %> <%= cat.name %></span>
+            <span class="cat-tag" data-cat="<%= cat.id %>"><i class="fas <%= cat.font_icon %>"></i> <%= escapeHtml(cat.name) %></span>
         <% }); %>
     </div>
 
-    <!-- Bookmarks -->
+    <!-- Bookmarks (always visible, filtered in-place) -->
     <div id="bookmarkGrid">
         <% if (categories.length === 0) { %>
             <div class="no-result"><i class="fa fa-bookmark-o"></i>暂无书签</div>
         <% } else { %>
             <% categories.forEach(function(cat) { %>
                 <div class="cat-section" id="cat-<%= cat.id %>">
-                    <div class="cat-title"><%= cat.icon %> <%= cat.name %></div>
+                    <div class="cat-title"><i class="fas <%= cat.font_icon %>"></i> <%= escapeHtml(cat.name) %></div>
                     <div class="grid">
                         <% cat.links.forEach(function(link) { %>
-                            <a href="<%= link.url %>" class="card" target="_blank"
-                               data-title="<%= link.title %>"
-                               data-url="<%= link.url %>"
-                               data-desc="<%= link.description || '' %>">
+                            <a href="<%= escapeHtml(link.url) %>" class="card" target="_blank"
+                               data-title="<%= escapeHtml(link.title) %>"
+                               data-url="<%= escapeHtml(link.url) %>"
+                               data-desc="<%= escapeHtml(link.description || '') %>">
                                 <div class="card-icon">
-                                    <% if (link.favicon) { %>
-                                        <img src="<%= link.favicon %>" onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
-                                    <% } else { %>
-                                        <i class="fa fa-link"></i>
-                                    <% } %>
+                                    <%
+                                        var faviconDomain2 = '';
+                                        try { faviconDomain2 = new URL(link.url).hostname; } catch(e) {}
+                                    %>
+                                    <img src="https://favicon.im/<%= escapeHtml(faviconDomain2) %>.png"
+                                         style="width:28px;height:28px;border-radius:6px;object-fit:contain;"
+                                         onerror="this.parentElement.innerHTML='<i class=\'fa fa-link\'></i>'">
                                 </div>
-                                <div class="card-title"><%= link.title %></div>
-                                <div class="card-desc"><%= link.description || '' %></div>
+                                <div class="card-title"><%= escapeHtml(link.title) %></div>
+                                <div class="card-desc"><%= escapeHtml(link.description || '') %></div>
                             </a>
                         <% }); %>
                     </div>
@@ -351,7 +440,7 @@
     </div>
 
     <div class="site-footer">
-        &copy; <%= new Date().getFullYear() %> <%= siteName %>
+        &copy; <%= new Date().getFullYear() %> <%= escapeHtml(siteName) %>
         <span style="margin-left:8px"><a href="/login" style="color:#484f58;text-decoration:none">管理</a></span>
     </div>
 </div>
@@ -368,48 +457,101 @@ function showTime() {
 showTime();
 setInterval(showTime, 1000);
 
-// Search
-var engine = 'baidu';
-var engineUrl = 'https://www.baidu.com/s?wd=';
+// Search - 实时客户端筛选（启动器风格）
 var searchInput = document.getElementById('searchInput');
+var clearBtn = document.getElementById('clearSearch');
 var suggestions = document.getElementById('suggestions');
+var searchStatus = document.getElementById('searchStatus');
 var allLinks = <%- JSON.stringify(allLinks) %>;
+var searchTimer = null;
 
-document.querySelectorAll('.engine-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.engine-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        engine = btn.dataset.engine;
-        engineUrl = btn.dataset.url;
+// 实时筛选书签卡片（不跳页，直接在原视图中过滤）
+function doFilter() {
+    var q = searchInput.value.trim();
+    
+    // 清空按钮显隐
+    clearBtn.style.display = q ? 'block' : 'none';
+    
+    // 空搜索：还原全部
+    if (!q) {
+        document.querySelectorAll('.card').forEach(function(c) { c.style.display = ''; });
+        document.querySelectorAll('.cat-section').forEach(function(s) { s.style.display = ''; });
+        document.querySelectorAll('.cat-tag').forEach(function(t) { t.style.display = ''; });
+        suggestions.classList.remove('show');
+        searchStatus.textContent = '';
+        return;
+    }
+    
+    var qLower = q.toLowerCase();
+    var visibleCount = 0;
+    
+    // 筛选所有书签卡片（匹配标题/描述/URL）
+    document.querySelectorAll('.card').forEach(function(card) {
+        var match = card.dataset.title.toLowerCase().indexOf(qLower) >= 0 ||
+            (card.dataset.desc && card.dataset.desc.toLowerCase().indexOf(qLower) >= 0) ||
+            card.dataset.url.toLowerCase().indexOf(qLower) >= 0;
+        card.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
     });
-});
+    
+    // 隐藏没有可见书签的分类
+    document.querySelectorAll('.cat-section').forEach(function(sec) {
+        var anyVisible = sec.querySelector('.card:not([style*="display: none"])');
+        sec.style.display = anyVisible ? '' : 'none';
+    });
+    
+    // 隐藏没有书签的分类标签
+    document.querySelectorAll('.cat-tag[data-cat]').forEach(function(tag) {
+        var catId = tag.dataset.cat;
+        if (catId === 'all') return;
+        var section = document.getElementById('cat-' + catId);
+        var anyVisible = section && section.querySelector('.card:not([style*="display: none"])');
+        tag.style.display = anyVisible ? '' : 'none';
+    });
+    
+    // 显示状态提示
+    if (visibleCount === 0) {
+        searchStatus.textContent = '😢 没有找到 "' + q + '"';
+    } else {
+        searchStatus.textContent = '✨ 找到 ' + visibleCount + ' 个结果（继续输入精确筛选）';
+    }
+}
 
+// 输入事件：50ms 防抖，纯客户端实时筛选
 searchInput.addEventListener('input', function() {
     var q = this.value.trim();
-    if (!q) { suggestions.classList.remove('show'); return; }
-    var matches = allLinks.filter(function(l) {
-        return l.title.indexOf(q) >= 0 || (l.description && l.description.indexOf(q) >= 0);
-    }).slice(0, 8);
-    if (matches.length === 0) { suggestions.classList.remove('show'); return; }
-    suggestions.innerHTML = matches.map(function(m) {
-        return '<div class="suggestion-item" data-url="' + m.url + '"><span class="title">' + m.title + '</span><span class="hint">' + (m.description||'') + '</span></div>';
-    }).join('');
-    suggestions.classList.add('show');
+    
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(doFilter, 50);
 });
 
-suggestions.addEventListener('click', function(e) {
-    var item = e.target.closest('.suggestion-item');
-    if (item) { window.open(item.dataset.url, '_blank'); suggestions.classList.remove('show'); }
+// 清空按钮
+clearBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    doFilter();
+    searchInput.focus();
 });
 
+// ESC 清空搜索
 searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        searchInput.value = '';
+        doFilter();
+        searchInput.blur();
+    }
+    // 回车：聚焦在第一个结果
     if (e.key === 'Enter') {
-        var q = this.value.trim();
-        if (q) { window.open(engineUrl + encodeURIComponent(q), '_blank'); }
         suggestions.classList.remove('show');
     }
 });
 
+// 点击建议直接跳转
+suggestions.addEventListener('click', function(e) {
+    var item = e.target.closest('.suggestion-item');
+    if (item) { window.open(item.dataset.url, '_blank'); }
+});
+
+// 点击搜索框外关闭建议
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.search-input-wrap')) suggestions.classList.remove('show');
 });
@@ -429,6 +571,29 @@ document.querySelectorAll('.cat-tag').forEach(function(tag) {
         });
     });
 });
+
+// 如果 URL 有搜索参数，加载时就执行一次筛选
+var _initQ = new URLSearchParams(location.search).get('q');
+if (_initQ) {
+    searchInput.value = _initQ;
+    doFilter();
+}
+
+// Dark/Light mode toggle
+(function() {
+    var btn = document.getElementById('modeBtn');
+    var saved = localStorage.getItem('mynav-mode');
+    if (saved === 'light') {
+        document.body.classList.add('light-mode');
+        btn.textContent = '☀️';
+    }
+    btn.addEventListener('click', function() {
+        document.body.classList.toggle('light-mode');
+        var isLight = document.body.classList.contains('light-mode');
+        btn.textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem('mynav-mode', isLight ? 'light' : 'dark');
+    });
+})();
 </script>
 </body>
 </html>
