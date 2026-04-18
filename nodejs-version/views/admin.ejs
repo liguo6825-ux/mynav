@@ -604,45 +604,54 @@
             <div class="card">
                 <form method="POST" action="/admin/settings" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <div class="form-group">
-                        <label>网站标题</label>
-                        <input type="text" name="title" value="<%= settings.title %>">
+                    <h4 style="margin-bottom:15px;color:#444;border-bottom:1px solid #eee;padding-bottom:8px;">基本信息</h4>
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>网站标题</label>
+                            <input type="text" name="title" value="<%= settings.title %>">
+                        </div>
+                        <div class="form-group form-col">
+                            <label>副标题</label>
+                            <input type="text" name="subtitle" value="<%= settings.subtitle %>">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>副标题</label>
-                        <input type="text" name="subtitle" value="<%= settings.subtitle %>">
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>网站描述</label>
+                            <input type="text" name="description" value="<%= settings.description %>" placeholder="网站简介">
+                        </div>
+                        <div class="form-group form-col">
+                            <label>关键词</label>
+                            <input type="text" name="keywords" value="<%= settings.keywords %>" placeholder="多个用逗号分隔">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>网站描述</label>
-                        <textarea name="description" rows="3"><%= settings.description %></textarea>
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>每分类显示链接数</label>
+                            <input type="number" name="link_num" value="<%= settings.link_num %>">
+                        </div>
+                        <div class="form-group form-col">
+                            <label>默认主题</label>
+                            <select name="theme" class="form-control">
+                                <option value="1" <%= settings.theme === '1' || !settings.theme ? 'selected' : '' %>>主题1 - WebStack风格</option>
+                                <option value="2" <%= settings.theme === '2' ? 'selected' : '' %>>主题2 - 深色居中</option>
+                                <option value="3" <%= settings.theme === '3' ? 'selected' : '' %>>主题3 - 卡片风格</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>关键词</label>
-                        <input type="text" name="keywords" value="<%= settings.keywords %>">
-                    </div>
-                    <div class="form-group">
-                        <label>每分类显示链接数</label>
-                        <input type="number" name="link_num" value="<%= settings.link_num %>">
-                    </div>
-                    <div class="form-group">
-                        <label>默认主题</label>
-                        <select name="theme" class="form-control">
-                            <option value="1" <%= settings.theme === '1' || !settings.theme ? 'selected' : '' %>>主题1 - WebStack风格（左侧导航）</option>
-                            <option value="2" <%= settings.theme === '2' ? 'selected' : '' %>>主题2 - 深色居中（多引擎搜索）</option>
-                            <option value="3" <%= settings.theme === '3' ? 'selected' : '' %>>主题3 - 卡片风格（固定导航栏）</option>
-                        </select>
-                        <small class="form-text text-muted">选择网站首页默认显示的主题风格</small>
-                    </div>
-                    <div class="form-group">
-                        <label>搜索模式</label>
-                        <select name="auto_search" class="form-control">
-                            <option value="1" <%= settings.auto_search === '1' || settings.auto_search === 1 ? 'selected' : '' %>>自动搜索（输入2个字符自动触发）</option>
-                            <option value="0" <%= settings.auto_search === '0' || settings.auto_search === 0 || settings.auto_search === '' ? 'selected' : '' %>>手动搜索（按回车触发）</option>
-                        </select>
-                        <small class="form-text text-muted">选择首页搜索框的触发方式</small>
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>搜索模式</label>
+                            <select name="auto_search" class="form-control">
+                                <option value="1" <%= settings.auto_search === '1' || settings.auto_search === 1 ? 'selected' : '' %>>自动搜索（输入2字符触发）</option>
+                                <option value="0" <%= settings.auto_search === '0' || settings.auto_search === 0 || settings.auto_search === '' ? 'selected' : '' %>>手动搜索（按回车）</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-col"></div>
                     </div>
 
                     <!-- 背景设置 -->
+                    <h4 style="margin:20px 0 15px;color:#444;border-bottom:1px solid #eee;padding-bottom:8px;">背景设置</h4>
                     <div class="form-group">
                         <label>背景类型</label>
                         <select name="bg_type" id="bgType" class="form-control" onchange="toggleBgFields()">
