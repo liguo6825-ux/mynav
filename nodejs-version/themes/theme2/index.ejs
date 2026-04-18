@@ -514,8 +514,6 @@
                                     <span class="icon-char"><%= firstChar2 %></span>
                                     <% if (link.icon) { %>
                                         <img src="<%= escapeHtml(link.icon) %>" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
-                                    <% } else { %>
-                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain2) %>.png" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
                                     <% } %>
                                 </div>
                                 <div class="card-title"><%= escapeHtml(link.title) %></div>

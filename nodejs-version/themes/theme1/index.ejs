@@ -423,8 +423,6 @@
                                     <span class="icon-char"><%= firstChar %></span>
                                     <% if (link.icon) { %>
                                         <img src="<%= escapeHtml(link.icon) %>" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
-                                    <% } else { %>
-                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
                                     <% } %>
                                 </div>
                                 <div class="link-info">
@@ -459,8 +457,6 @@
                                             <span class="icon-char"><%= firstChar %></span>
                                             <% if (link.icon) { %>
                                                 <img src="<%= escapeHtml(link.icon) %>" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
-                                            <% } else { %>
-                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="opacity:0" onload="this.style.opacity=1" onerror="this.remove()">
                                             <% } %>
                                         </div>
                                         <div class="link-info">
