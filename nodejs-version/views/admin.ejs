@@ -261,12 +261,12 @@
         
         <ul class="nav-menu">
             <li><a href="/admin" class="<%= action === 'dashboard' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> <span>仪表盘</span></a></li>
+            <li><a href="/" target="_blank"><i class="fas fa-home"></i> <span>访问首页</span></a></li>
+            <li><a href="/admin/settings" class="<%= action === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> <span>系统设置</span></a></li>
             <li><a href="/admin/category" class="<%= action === 'category' ? 'active' : '' %>"><i class="fas fa-folder"></i> <span>分类管理</span></a></li>
             <li><a href="/admin/link" class="<%= action === 'link' ? 'active' : '' %>"><i class="fas fa-link"></i> <span>链接管理</span></a></li>
-            <li><a href="/admin/settings" class="<%= action === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> <span>系统设置</span></a></li>
             <li><a href="/admin/profile"><i class="fas fa-user-cog"></i> <span>个人设置</span></a></li>
             <li><a href="/admin/change-password"><i class="fas fa-key"></i> <span>修改密码</span></a></li>
-            <li><a href="/" target="_blank"><i class="fas fa-home"></i> <span>访问首页</span></a></li>
             <li><a href="/logout"><i class="fas fa-sign-out-alt"></i> <span>退出登录</span></a></li>
         </ul>
     </aside>
@@ -564,7 +564,7 @@
             <% } %>
 
             <div class="card">
-                <form method="POST" action="/admin/settings">
+                <form method="POST" action="/admin/settings" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>网站标题</label>
                         <input type="text" name="title" value="<%= settings.title %>">
@@ -601,6 +601,59 @@
                             <option value="0" <%= settings.auto_search === '0' || settings.auto_search === 0 || settings.auto_search === '' ? 'selected' : '' %>>手动搜索（按回车触发）</option>
                         </select>
                         <small class="form-text text-muted">选择首页搜索框的触发方式</small>
+                    </div>
+
+                    <!-- 背景设置 -->
+                    <div class="form-group">
+                        <label>背景类型</label>
+                        <select name="bg_type" id="bgType" class="form-control" onchange="toggleBgFields()">
+                            <option value="none" <%= (!settings.bg_type || settings.bg_type === 'none') ? 'selected' : '' %>>无背景（使用主题默认）</option>
+                            <option value="color" <%= settings.bg_type === 'color' ? 'selected' : '' %>>纯色背景</option>
+                            <option value="gradient" <%= settings.bg_type === 'gradient' ? 'selected' : '' %>>渐变背景</option>
+                            <option value="image" <%= settings.bg_type === 'image' ? 'selected' : '' %>>图片背景（URL）</option>
+                            <option value="upload" <%= settings.bg_type === 'upload' ? 'selected' : '' %>>上传背景图片</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="bgColorGroup" style="display:none">
+                        <label>背景颜色</label>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <input type="color" id="bgColorPicker" value="<%= settings.bg_color || '#1a1a2e' %>" style="width:50px;height:36px;border:none;cursor:pointer;border-radius:4px">
+                            <input type="text" name="bg_color" id="bgColorText" value="<%= settings.bg_color || '#1a1a2e' %>" class="form-control" style="max-width:200px" placeholder="#1a1a2e">
+                        </div>
+                        <small class="form-text text-muted">支持 HEX (#1a1a2e)、RGB、颜色名称</small>
+                    </div>
+                    <div class="form-group" id="bgGradientGroup" style="display:none">
+                        <label>渐变色</label>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                            <input type="color" id="gradStart" value="<%= (settings.bg_gradient || '').split(',')[0] || '#0f0c29' %>" style="width:50px;height:36px;border:none;cursor:pointer;border-radius:4px">
+                            <span style="color:#888">→</span>
+                            <input type="color" id="gradEnd" value="<%= (settings.bg_gradient || '').split(',')[1] || '#302b63' %>" style="width:50px;height:36px;border:none;cursor:pointer;border-radius:4px">
+                        </div>
+                        <input type="text" name="bg_gradient" id="bgGradientText" value="<%= settings.bg_gradient || '' %>" class="form-control" placeholder="起始色,结束色 如: #0f0c29,#302b63">
+                        <div id="gradientPreview" style="height:40px;border-radius:8px;margin-top:8px;border:1px solid #ddd"></div>
+                        <small class="form-text text-muted">格式：起始颜色,结束颜色（逗号分隔）</small>
+                    </div>
+                    <div class="form-group" id="bgImageGroup" style="display:none">
+                        <label>背景图片 URL</label>
+                        <input type="text" name="bg_image" value="<%= settings.bg_image || '' %>" class="form-control" placeholder="https://example.com/bg.jpg">
+                        <small class="form-text text-muted">输入图片地址，支持 JPG/PNG/WebP/SVG</small>
+                        <div id="bgImagePreview" style="margin-top:8px;height:80px;border-radius:8px;border:1px solid #ddd;background-size:cover;background-position:center;overflow:hidden"></div>
+                    </div>
+                    <div class="form-group" id="bgUploadGroup" style="display:none">
+                        <label>上传背景图片</label>
+                        <input type="file" name="bg_file" id="bgFileInput" accept="image/*" style="display:none" onchange="previewUpload(this)">
+                        <label for="bgFileInput" class="btn btn-secondary" style="cursor:pointer"><i class="fas fa-upload"></i> 选择图片</label>
+                        <span id="bgFileName" style="margin-left:10px;color:#888"></span>
+                        <div id="bgUploadPreview" style="margin-top:8px;height:80px;border-radius:8px;border:1px solid #ddd;background-size:cover;background-position:center;overflow:hidden"></div>
+                        <small class="form-text text-muted">支持 JPG/PNG/WebP，建议分辨率 1920×1080 以上，文件 &lt; 5MB</small>
+                    </div>
+                    <div class="form-group" id="bgOverlayGroup" style="display:none">
+                        <label>遮罩透明度</label>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <input type="range" name="bg_overlay" id="bgOverlay" min="0" max="100" value="<%= settings.bg_overlay !== undefined ? settings.bg_overlay : 85 %>" style="flex:1" oninput="document.getElementById('overlayValue').textContent=this.value+'%'">
+                            <span id="overlayValue" style="min-width:40px;text-align:right"><%= settings.bg_overlay !== undefined ? settings.bg_overlay : 85 %>%</span>
+                        </div>
+                        <small class="form-text text-muted">图片/渐变背景上覆盖半透明遮罩，提高文字可读性</small>
                     </div>
                     <div class="form-group">
                         <label>自定义 Header</label>
@@ -643,5 +696,81 @@
             </div>
         <% } %>
     </main>
+
+<script>
+// 背景设置字段切换
+function toggleBgFields() {
+    var type = document.getElementById('bgType').value;
+    document.getElementById('bgColorGroup').style.display = type === 'color' ? '' : 'none';
+    document.getElementById('bgGradientGroup').style.display = type === 'gradient' ? '' : 'none';
+    document.getElementById('bgImageGroup').style.display = type === 'image' ? '' : 'none';
+    document.getElementById('bgUploadGroup').style.display = type === 'upload' ? '' : 'none';
+    document.getElementById('bgOverlayGroup').style.display = (type === 'image' || type === 'upload' || type === 'gradient') ? '' : 'none';
+    updateGradientPreview();
+    updateImagePreview();
+}
+
+// 颜色选择器联动
+document.getElementById('bgColorPicker').addEventListener('input', function() {
+    document.getElementById('bgColorText').value = this.value;
+});
+document.getElementById('bgColorText').addEventListener('input', function() {
+    if (/^#[0-9a-f]{6}$/i.test(this.value)) document.getElementById('bgColorPicker').value = this.value;
+});
+
+// 渐变预览
+function updateGradientPreview() {
+    var text = document.getElementById('bgGradientText').value;
+    var parts = text.split(',');
+    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+        document.getElementById('gradientPreview').style.background = 'linear-gradient(135deg,' + parts[0].trim() + ',' + parts[1].trim() + ')';
+    }
+}
+document.getElementById('gradStart').addEventListener('input', function() {
+    var end = document.getElementById('gradEnd').value;
+    document.getElementById('bgGradientText').value = this.value + ',' + end;
+    updateGradientPreview();
+});
+document.getElementById('gradEnd').addEventListener('input', function() {
+    var start = document.getElementById('gradStart').value;
+    document.getElementById('bgGradientText').value = start + ',' + this.value;
+    updateGradientPreview();
+});
+document.getElementById('bgGradientText').addEventListener('input', updateGradientPreview);
+
+// 图片URL预览
+function updateImagePreview() {
+    var url = document.querySelector('[name="bg_image"]').value;
+    if (url) {
+        document.getElementById('bgImagePreview').style.backgroundImage = 'url(' + url + ')';
+    } else {
+        document.getElementById('bgImagePreview').style.backgroundImage = 'none';
+    }
+}
+document.querySelector('[name="bg_image"]').addEventListener('input', updateImagePreview);
+
+// 上传预览
+function previewUpload(input) {
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        document.getElementById('bgFileName').textContent = file.name;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('文件大小不能超过 5MB');
+            input.value = '';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('bgUploadPreview').style.backgroundImage = 'url(' + e.target.result + ')';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// 初始化
+toggleBgFields();
+updateGradientPreview();
+updateImagePreview();
+</script>
 </body>
 </html>

@@ -1128,18 +1128,43 @@ app.get('/admin/settings', (req, res) => {
 });
 
 // 保存设置
-app.post('/admin/settings', (req, res) => {
+app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
 
-    const { title, subtitle, description, keywords, link_num, theme, custom_header, auto_search } = req.body;
+    const { title, subtitle, description, keywords, link_num, theme, custom_header, auto_search,
+            bg_type, bg_color, bg_gradient, bg_image, bg_overlay } = req.body;
+    
+    let finalBgType = bg_type || 'none';
+    let finalBgImage = bg_image || '';
+    
+    // 如果选择了上传背景
+    if (req.file) {
+        if (req.file.size > 5 * 1024 * 1024) {
+            return res.redirect('/admin/settings?error=背景图片不能超过5MB');
+        }
+        const bgDir = path.join(__dirname, 'public', 'bg');
+        if (!fs.existsSync(bgDir)) fs.mkdirSync(bgDir, { recursive: true });
+        const ext = path.extname(req.file.originalname) || '.jpg';
+        const filename = 'background-' + Date.now() + ext;
+        fs.writeFileSync(path.join(bgDir, filename), req.file.buffer);
+        finalBgType = 'upload';
+        finalBgImage = '/bg/' + filename;
+        auditLog('upload-bg', req.session.username, req, '上传背景: ' + filename);
+    }
+    
     const newSettings = JSON.stringify({
         title, subtitle, description, keywords,
         link_num: parseInt(link_num) || 50,
         theme: theme || '1',
         custom_header: custom_header || '',
-        auto_search: auto_search || '0'
+        auto_search: auto_search || '0',
+        bg_type: finalBgType,
+        bg_color: bg_color || '',
+        bg_gradient: bg_gradient || '',
+        bg_image: finalBgImage,
+        bg_overlay: bg_overlay !== undefined ? parseInt(bg_overlay) : 85
     });
 
     db.prepare('UPDATE on_options SET value = ? WHERE key = ?').run(newSettings, 'site_settings');

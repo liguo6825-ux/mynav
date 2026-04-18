@@ -13,18 +13,32 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-            /* pcfix.fun style: dark bg image */
-            background-image: url('https://pcfix.fun/data/upload/202512/jxgz.png');
+            <% if (settings.bg_type === 'image' || settings.bg_type === 'upload') { %>
+            background-image: url('<%= settings.bg_image %>');
             background-repeat: no-repeat;
             background-size: cover;
             background-attachment: fixed;
             background-color: #1a1a2e;
+            <% } else if (settings.bg_type === 'gradient') { %>
+            background: linear-gradient(135deg, <%= (settings.bg_gradient || '#0f0c29,#302b63').split(',')[0].trim() %>, <%= (settings.bg_gradient || '#0f0c29,#302b63').split(',')[1] ? (settings.bg_gradient || '#0f0c29,#302b63').split(',')[1].trim() : '#302b63' %>);
+            background-attachment: fixed;
+            <% } else if (settings.bg_type === 'color') { %>
+            background-color: <%= settings.bg_color || '#1a1a2e' %>;
+            <% } else { %>
+            background-color: #1a1a2e;
+            <% } %>
         }
         body::before {
             content: '';
             position: fixed;
             inset: 0;
+            <% if (settings.bg_type === 'image' || settings.bg_type === 'upload' || settings.bg_type === 'gradient') { %>
+            background: rgba(26,26,46,<%= ((settings.bg_overlay !== undefined ? settings.bg_overlay : 85) / 100).toFixed(2) %>);
+            <% } else if (settings.bg_type === 'color') { %>
+            background: none;
+            <% } else { %>
             background: rgba(26,26,46,0.92);
+            <% } %>
             z-index: -1;
         }
         /* Navbar */
@@ -95,10 +109,25 @@
         }
         .cat-tabs-inner {
             overflow-x: auto;
-            padding: 0 40px;
-            scrollbar-width: none;
+            padding: 4px 40px;
+            /* 隐藏式滚动条：悬停时显示 */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
         }
-        .cat-tabs-inner::-webkit-scrollbar { display: none; }
+        .cat-tabs-inner::-webkit-scrollbar {
+            height: 4px;
+        }
+        .cat-tabs-inner::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .cat-tabs-inner::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+        .cat-tabs-inner:hover::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.25);
+        }
         .cat-scroll-btn {
             position: absolute;
             top: 50%;
@@ -168,11 +197,17 @@
             border-radius: 10px;
             margin-left: 8px;
         }
-        /* Bookmark cards - pcfix.fun style */
+        /* Bookmark cards - 横向3列排列 */
         .bm-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 14px;
+        }
+        @media (max-width: 768px) {
+            .bm-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .bm-grid { grid-template-columns: 1fr; }
         }
         .bm-card {
             background: rgba(255,255,255,0.06);
