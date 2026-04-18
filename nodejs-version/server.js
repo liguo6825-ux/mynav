@@ -332,8 +332,7 @@ function csrfMiddleware(req, res, next) {
     if (!token || token !== req.session.csrfToken) {
         return res.status(403).send('CSRF 验证失败，请刷新页面后重试');
     }
-    // 验证成功后刷新 token（防止重放攻击）
-    req.session.csrfToken = genToken();
+    // 保持 token 不变（同一 session 内复用，避免多表单冲突）
     res.locals.csrfToken = req.session.csrfToken;
     next();
 }
