@@ -1196,10 +1196,10 @@ app.post('/admin/link/toggle-top', (req, res) => {
     res.redirect('/admin/link?msg=' + (newTopping ? '已置顶' : '已取消置顶'));
 });
 
-// 更新链接（支持 multipart 表单）
+// 更新链接（支持 multipart 表单，返回 JSON）
 app.post('/admin/link/update', upload.single('icon_file'), (req, res) => {
     if (!isLoggedIn(req)) {
-        return res.redirect('/login');
+        return res.status(401).json({ success: false, error: '未登录' });
     }
 
     const { id, title, url, fid, weight, description, icon } = req.body;
@@ -1224,7 +1224,7 @@ app.post('/admin/link/update', upload.single('icon_file'), (req, res) => {
         .run(title, url, fid, weight || 100, description || '', finalIcon, id);
     auditLog('link-update', req.session.username, req, '更新链接: ' + title + ' -> ' + url);
 
-    res.redirect('/admin/link?msg=更新成功');
+    res.json({ success: true });
 });
 
 // 图标上传目录

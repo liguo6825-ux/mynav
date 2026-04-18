@@ -627,13 +627,13 @@
                             <!-- 链接编辑行 -->
                             <tr class="link-edit-row" id="link-edit-<%= link.id %>" style="display:none;">
                                 <td colspan="6">
-                                    <form method="POST" action="/admin/link/update" class="link-edit-form" enctype="multipart/form-data">
+                                    <form class="link-edit-form" enctype="multipart/form-data" onsubmit="return submitLinkUpdate(event, <%= link.id %>)">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <div class="link-edit-grid">
                                             <div class="link-edit-item">
                                                 <label>分类</label>
-                                                <select name="fid">
+                                                <select name="fid" id="edit-fid-<%= link.id %>">
                                                     <% categories.forEach(function(c) { %>
                                                         <option value="<%= c.id %>" <%= link.fid==c.id?'selected':'' %>><%= c.name %></option>
                                                     <% }); %>
@@ -641,17 +641,19 @@
                                             </div>
                                             <div class="link-edit-item">
                                                 <label>权重</label>
-                                                <input type="number" name="weight" value="<%= link.weight %>">
+                                                <input type="number" name="weight" value="<%= link.weight %>" id="edit-weight-<%= link.id %>">
                                             </div>
                                             <div class="link-edit-item" style="min-width:200px;">
                                                 <label>描述</label>
-                                                <input type="text" name="description" value="<%= link.description || '' %>" placeholder="简短描述">
+                                                <input type="text" name="description" value="<%= link.description || '' %>" placeholder="简短描述" id="edit-desc-<%= link.id %>">
                                             </div>
                                             <div class="link-edit-item" style="min-width:220px;">
                                                 <label>图标</label>
                                                 <div class="icon-upload-wrapper">
                                                     <% if (link.icon) { %>
-                                                        <img src="<%= link.icon %>" class="icon-preview" onerror="this.style.display='none'">
+                                                        <img src="<%= link.icon %>" class="icon-preview" id="edit-icon-preview-<%= link.id %>" onerror="this.style.display='none'">
+                                                    <% } else { %>
+                                                        <img src="" class="icon-preview" id="edit-icon-preview-<%= link.id %>" style="display:none">
                                                     <% } %>
                                                     <input type="text" name="icon" value="<%= link.icon || '' %>" placeholder="URL或上传" id="icon-input-<%= link.id %>">
                                                     <input type="file" name="icon_file" accept="image/*" style="display:none" id="icon-file-<%= link.id %>" onchange="uploadIcon(<%= link.id %>, this)">
@@ -660,14 +662,14 @@
                                             </div>
                                             <div class="link-edit-item" style="min-width:150px;">
                                                 <label>标题 <span style="color:#e74c3c">*</span></label>
-                                                <input type="text" name="title" value="<%= link.title %>" required>
+                                                <input type="text" name="title" value="<%= link.title %>" required id="edit-title-<%= link.id %>">
                                             </div>
                                             <div class="link-edit-item" style="flex:3;min-width:300px;">
                                                 <label>URL <span style="color:#e74c3c">*</span></label>
-                                                <input type="url" name="url" value="<%= link.url %>" required style="width:100%;">
+                                                <input type="url" name="url" value="<%= link.url %>" required style="width:100%;" id="edit-url-<%= link.id %>">
                                             </div>
                                             <div class="link-edit-actions">
-                                                <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                                                <button type="submit" class="btn btn-primary btn-sm" id="save-btn-<%= link.id %>">保存</button>
                                                 <button type="button" class="btn btn-secondary btn-sm" onclick="toggleLinkEdit(<%= link.id %>)">取消</button>
                                             </div>
                                         </div>
@@ -700,7 +702,11 @@
                 .then(data => {
                     if (data.success) {
                         document.getElementById('icon-input-' + linkId).value = data.iconUrl;
-                        alert('图标上传成功！');
+                        var preview = document.getElementById('edit-icon-preview-' + linkId);
+                        if (preview) {
+                            preview.src = data.iconUrl;
+                            preview.style.display = 'block';
+                        }
                     } else {
                         alert('上传失败：' + (data.error || '未知错误'));
                     }
@@ -708,6 +714,72 @@
                 .catch(err => {
                     alert('上传失败：' + err.message);
                 });
+            }
+            
+            function submitLinkUpdate(event, linkId) {
+                event.preventDefault();
+                
+                var form = event.target;
+                var formData = new FormData(form);
+                var saveBtn = document.getElementById('save-btn-' + linkId);
+                
+                saveBtn.disabled = true;
+                saveBtn.textContent = '保存中...';
+                
+                fetch('/admin/link/update', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存';
+                    
+                    if (data.success) {
+                        // 更新表格行显示
+                        var row = document.querySelector('.link-row[onclick*="toggleLinkEdit(' + linkId + ')"]');
+                        if (row) {
+                            var cells = row.querySelectorAll('td');
+                            // 更新标题
+                            cells[0].textContent = document.getElementById('edit-title-' + linkId).value;
+                            // 更新URL
+                            var url = document.getElementById('edit-url-' + linkId).value;
+                            cells[1].innerHTML = '<a href="' + url + '" target="_blank">' + (url.length > 40 ? url.substring(0, 40) + '…' : url) + '</a>';
+                            // 更新分类
+                            var fidSelect = document.getElementById('edit-fid-' + linkId);
+                            var catName = fidSelect.options[fidSelect.selectedIndex].text;
+                            cells[2].innerHTML = '<span class="cat-tag">' + catName + '</span>';
+                            // 更新权重
+                            cells[3].textContent = document.getElementById('edit-weight-' + linkId).value;
+                        }
+                        
+                        // 关闭编辑行
+                        toggleLinkEdit(linkId);
+                        
+                        // 显示成功提示
+                        showSuccessTip('保存成功');
+                    } else {
+                        alert('保存失败：' + (data.error || '未知错误'));
+                    }
+                })
+                .catch(err => {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存';
+                    alert('保存失败：' + err.message);
+                });
+                
+                return false;
+            }
+            
+            function showSuccessTip(msg) {
+                var tip = document.createElement('div');
+                tip.className = 'success-tip';
+                tip.textContent = msg;
+                tip.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:10px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 10px rgba(0,0,0,0.2);';
+                document.body.appendChild(tip);
+                setTimeout(function() {
+                    tip.remove();
+                }, 2000);
             }
             </script>
             
