@@ -14,9 +14,33 @@ const fs = require('fs');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
+// ============ 启动时安全校验（环境变量必须设置）============
+// 会话密钥
+const SESSION_SECRET = process.env.MYNAV_SESSION_SECRET;
+if (!SESSION_SECRET) {
+    console.error('❌ 错误：未设置环境变量 MYNAV_SESSION_SECRET');
+    console.error('   请在启动前设置：export MYNAV_SESSION_SECRET=<随机字符串>');
+    console.error('   生成随机密钥：openssl rand -hex 32');
+    process.exit(1);
+}
+
+// SMTP 加密密钥
+const SMTP_KEY = process.env.MYNAV_SMTP_KEY;
+if (!SMTP_KEY) {
+    console.error('❌ 错误：未设置环境变量 MYNAV_SMTP_KEY');
+    console.error('   请在启动前设置：export MYNAV_SMTP_KEY=<随机字符串>');
+    console.error('   生成随机密钥：openssl rand -hex 32');
+    process.exit(1);
+}
+const SMTP_KEY_DERIVED = crypto.scryptSync(SMTP_KEY, 'mynav-salt-v1', 32);
+
+// ============ 应用常量 ============
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
+
+// 允许的背景图片扩展名（白名单）
+const ALLOWED_IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
 
 // 数据目录
 const DATA_DIR = path.join(__dirname, 'data');
@@ -161,11 +185,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // 会话配置
 app.use(session({
-    secret: 'onenav-secret-key-2026',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }
+    cookie: { maxAge: 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' }
 }));
+
+// CSRF 防护中间件
+app.use(csrfMiddleware);
 
 // 文件上传配置
 const upload = multer({ storage: multer.memoryStorage() });
@@ -232,16 +259,10 @@ function auditLog(action, username, req, details) {
 }
 
 // ---------- SMTP 加密存储 ----------
-const SMTP_KEY = crypto.scryptSync(
-    process.env.SMTP_KEY || 'mynav-smtp-key-2024',
-    'mynav-salt-v1',
-    32
-);
-
 function encryptSMTP(pass) {
     if (!pass) return '';
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', SMTP_KEY, iv);
+    const cipher = crypto.createCipheriv('aes-256-gcm', SMTP_KEY_DERIVED, iv);
     const encrypted = Buffer.concat([cipher.update(pass, 'utf8'), cipher.final()]);
     const tag = cipher.getAuthTag();
     return Buffer.concat([iv, tag, encrypted]).toString('base64');
@@ -251,7 +272,7 @@ function decryptSMTP(encrypted) {
     if (!encrypted) return '';
     try {
         const buf = Buffer.from(encrypted, 'base64');
-        const decipher = crypto.createDecipheriv('aes-256-gcm', SMTP_KEY, buf.subarray(0, 16));
+        const decipher = crypto.createDecipheriv('aes-256-gcm', SMTP_KEY_DERIVED, buf.subarray(0, 16));
         decipher.setAuthTag(buf.subarray(16, 32));
         return decipher.update(buf.subarray(32)) + decipher.final('utf8');
     } catch (e) {
@@ -278,6 +299,27 @@ function cleanupExpired() {
 // ---------- 验证码生成 ----------
 function generateVerifyCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// ---------- 搜索输入安全过滤 ----------
+// 过滤 LIKE 查询中的特殊字符（%，_，\），防止模糊 DoS 或意外匹配
+function sanitizeSearchInput(input) {
+    if (!input || typeof input !== 'string') return '';
+    return input.replace(/[%_\\]/g, ' ').trim();
+}
+
+// ---------- 独立的 CSRF 验证中间件 ----------
+function csrfMiddleware(req, res, next) {
+    // GET/HEAD/OPTIONS 不验证
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    
+    const token = req.body && req.body._csrf;
+    if (!token || token !== req.session.csrfToken) {
+        return res.status(403).send('CSRF 验证失败，请刷新页面后重试');
+    }
+    // 验证成功后刷新 token（防止重放攻击）
+    req.session.csrfToken = generateCSRFToken();
+    next();
 }
 
 // ---------- 辅助函数 ----------
@@ -467,11 +509,12 @@ app.get('/', (req, res) => {
     let searchResults = [];
     
     if (searchQuery) {
+        const safeQuery = sanitizeSearchInput(searchQuery);
         searchResults = db.prepare(`
             SELECT * FROM on_links 
             WHERE title LIKE ? OR description LIKE ? OR url LIKE ?
             ORDER BY weight DESC
-        `).all(`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`);
+        `).all(`%${safeQuery}%`, `%${safeQuery}%`, `%${safeQuery}%`);
     }
     
     res.render(themePath, {
@@ -662,7 +705,7 @@ app.get('/admin/profile', (req, res) => {
 });
 
 // 绑定邮箱
-app.post('/admin/bind-email', (req, res) => {
+app.post('/admin/profile/bind-email', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
@@ -712,7 +755,7 @@ app.post('/admin/bind-email', (req, res) => {
 });
 
 // 验证邮箱
-app.post('/admin/verify-email', (req, res) => {
+app.post('/admin/profile/verify-email', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
@@ -959,12 +1002,31 @@ app.post('/admin/category/add', (req, res) => {
     }
     
     const { name, fid, weight, font_icon } = req.body;
+    const username = req.session.username;
     db.prepare('INSERT INTO on_categorys (name, fid, weight, font_icon) VALUES (?, ?, ?, ?)').run(
         name, parseInt(fid) || 0, parseInt(weight) || 100, font_icon || 'fa-folder'
     );
+    auditLog('category-add', username, req, '添加分类: ' + name);
     
     res.redirect('/admin/category?msg=添加成功');
 });
+
+// ---------- 递归删除分类（包含所有子分类和链接） ----------
+function deleteCategoryRecursive(categoryId) {
+    // 1. 删除该分类下的所有链接
+    db.prepare('DELETE FROM on_links WHERE fid = ?').run(categoryId);
+    
+    // 2. 找出所有子分类
+    const children = db.prepare('SELECT id FROM on_categorys WHERE fid = ?').all(categoryId);
+    
+    // 3. 递归删除每个子分类
+    children.forEach(child => {
+        deleteCategoryRecursive(child.id);
+    });
+    
+    // 4. 删除当前分类
+    db.prepare('DELETE FROM on_categorys WHERE id = ?').run(categoryId);
+}
 
 // 删除分类
 app.post('/admin/category/delete', (req, res) => {
@@ -973,10 +1035,18 @@ app.post('/admin/category/delete', (req, res) => {
     }
     
     const { id } = req.body;
-    db.prepare('DELETE FROM on_links WHERE fid = ?').run(id);
-    db.prepare('DELETE FROM on_categorys WHERE id = ?').run(id);
+    const username = req.session.username;
     
-    res.redirect('/admin/category?msg=删除成功');
+    // 递归删除（包含子分类和链接）
+    const category = db.prepare('SELECT name FROM on_categorys WHERE id = ?').get(id);
+    if (!category) {
+        return res.redirect('/admin/category?error=分类不存在');
+    }
+    
+    deleteCategoryRecursive(parseInt(id));
+    auditLog('category-delete', username, req, '删除分类: ' + category.name + ' (含子分类)');
+    
+    res.redirect('/admin/category?msg=删除成功（含子分类和链接）');
 });
 
 // 切换分类显示/隐藏
@@ -986,7 +1056,12 @@ app.post('/admin/category/toggle', (req, res) => {
     }
     
     const { id } = req.body;
-    db.prepare('UPDATE on_categorys SET hidden = NOT hidden WHERE id = ?').run(id);
+    const category = db.prepare('SELECT name, hidden FROM on_categorys WHERE id = ?').get(id);
+    if (category) {
+        const newHidden = category.hidden ? 0 : 1;
+        db.prepare('UPDATE on_categorys SET hidden = ? WHERE id = ?').run(newHidden, id);
+        auditLog('category-toggle', req.session.username, req, '切换分类可见性: ' + category.name + ' -> ' + (newHidden ? '隐藏' : '显示'));
+    }
     
     res.redirect('/admin/category?msg=切换成功');
 });
@@ -1000,6 +1075,7 @@ app.post('/admin/category/update', (req, res) => {
     const { id, name, fid, font_icon, weight } = req.body;
     db.prepare('UPDATE on_categorys SET name = ?, fid = ?, font_icon = ?, weight = ? WHERE id = ?')
         .run(name, fid || 0, font_icon || 'fa-folder', weight || 100, id);
+    auditLog('category-update', req.session.username, req, '更新分类: ' + name);
     
     res.redirect('/admin/category?msg=更新成功');
 });
@@ -1022,8 +1098,9 @@ app.get('/admin/link', (req, res) => {
     let whereClauses = [];
     
     if (searchQuery) {
+        const safeQuery = sanitizeSearchInput(searchQuery);
         whereClauses.push('(title LIKE ? OR url LIKE ?)');
-        params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+        params.push(`%${safeQuery}%`, `%${safeQuery}%`);
     }
     if (filterFid) {
         whereClauses.push('fid = ?');
@@ -1062,6 +1139,7 @@ app.post('/admin/link/add', (req, res) => {
     db.prepare('INSERT INTO on_links (title, url, description, fid, weight) VALUES (?, ?, ?, ?, ?)').run(
         title, url, description || '', parseInt(fid), parseInt(weight) || 100
     );
+    auditLog('link-add', req.session.username, req, '添加链接: ' + title + ' -> ' + url);
     
     res.redirect('/admin/link?msg=添加成功');
 });
@@ -1073,6 +1151,10 @@ app.post('/admin/link/delete', (req, res) => {
     }
     
     const { id } = req.body;
+    const link = db.prepare('SELECT title FROM on_links WHERE id = ?').get(id);
+    if (link) {
+        auditLog('link-delete', req.session.username, req, '删除链接: ' + link.title);
+    }
     db.prepare('DELETE FROM on_links WHERE id = ?').run(id);
     
     res.redirect('/admin/link?msg=删除成功');
@@ -1085,9 +1167,10 @@ app.post('/admin/link/toggle-top', (req, res) => {
     }
     
     const { id } = req.body;
-    const link = db.prepare('SELECT topping FROM on_links WHERE id = ?').get(id);
+    const link = db.prepare('SELECT title, topping FROM on_links WHERE id = ?').get(id);
     const newTopping = link.topping ? 0 : 1;
     db.prepare('UPDATE on_links SET topping = ? WHERE id = ?').run(newTopping, id);
+    auditLog('link-toggle-top', req.session.username, req, '切换置顶: ' + link.title + ' -> ' + (newTopping ? '置顶' : '取消置顶'));
     
     res.redirect('/admin/link?msg=' + (newTopping ? '已置顶' : '已取消置顶'));
 });
@@ -1101,6 +1184,7 @@ app.post('/admin/link/update', (req, res) => {
     const { id, title, url, fid, weight, description } = req.body;
     db.prepare('UPDATE on_links SET title = ?, url = ?, fid = ?, weight = ?, description = ? WHERE id = ?')
         .run(title, url, fid, weight || 100, description || '', id);
+    auditLog('link-update', req.session.username, req, '更新链接: ' + title + ' -> ' + url);
     
     res.redirect('/admin/link?msg=更新成功');
 });
@@ -1144,9 +1228,18 @@ app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
         if (req.file.size > 5 * 1024 * 1024) {
             return res.redirect('/admin/settings?error=背景图片不能超过5MB');
         }
+        // 白名单扩展名验证
+        const ext = (path.extname(req.file.originalname) || '').toLowerCase();
+        if (!ALLOWED_IMAGE_EXT.includes(ext)) {
+            return res.redirect('/admin/settings?error=不支持的图片格式，仅支持：JPG/PNG/GIF/WebP/BMP');
+        }
+        // MIME 类型验证（防止扩展名伪造）
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        if (!allowedMimes.includes((req.file.mimetype || '').toLowerCase())) {
+            return res.redirect('/admin/settings?error=文件类型不支持');
+        }
         const bgDir = path.join(__dirname, 'public', 'bg');
         if (!fs.existsSync(bgDir)) fs.mkdirSync(bgDir, { recursive: true });
-        const ext = path.extname(req.file.originalname) || '.jpg';
         const filename = 'background-' + Date.now() + ext;
         fs.writeFileSync(path.join(bgDir, filename), req.file.buffer);
         finalBgType = 'upload';
@@ -1168,6 +1261,7 @@ app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
     });
 
     db.prepare('UPDATE on_options SET value = ? WHERE key = ?').run(newSettings, 'site_settings');
+    auditLog('settings-save', req.session.username, req, '保存系统设置');
 
     res.redirect('/admin/settings?msg=保存成功');
 });
@@ -1177,6 +1271,7 @@ app.get('/admin/export', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
+    auditLog('bookmark-export', req.session.username, req, '导出书签');
 
     const categories = db.prepare('SELECT * FROM on_categorys ORDER BY weight DESC').all();
     const links = db.prepare('SELECT * FROM on_links ORDER BY weight DESC').all();
@@ -1243,6 +1338,7 @@ app.post('/admin/import', upload.single('bookmarks'), (req, res) => {
     try {
         // 解析 HTML 书签格式
         const result = parseBookmarkHtml(content);
+        auditLog('bookmark-import', req.session.username, req, `导入书签: ${result.categories} 个分类, ${result.links} 个链接`);
         res.redirect(`/admin/settings?msg=导入成功：${result.categories} 个分类，${result.links} 个链接`);
     } catch (e) {
         res.redirect(`/admin/settings?error=导入失败：${e.message}`);
@@ -1338,6 +1434,14 @@ console.log(`  本机: http://localhost:${PORT}`);
 console.log('');
 console.log('默认账号: admin');
 console.log('默认密码: admin123');
+console.log('');
+console.log('⚠️  安全启动检查:');
+console.log(`  MYNAV_SESSION_SECRET: ${process.env.MYNAV_SESSION_SECRET ? '✅ 已设置' : '❌ 未设置'}`);
+console.log(`  MYNAV_SMTP_KEY: ${process.env.MYNAV_SMTP_KEY ? '✅ 已设置' : '❌ 未设置'}`);
+console.log('');
+console.log('首次启动请设置环境变量:');
+console.log('  export MYNAV_SESSION_SECRET=$(openssl rand -hex 32)');
+console.log('  export MYNAV_SMTP_KEY=$(openssl rand -hex 32)');
 console.log('');
 console.log('按 Ctrl+C 停止服务器');
 console.log('================================');

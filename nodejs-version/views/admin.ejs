@@ -312,6 +312,7 @@
             <div class="card">
                 <div class="card-header"><h3>添加分类</h3></div>
                 <form method="POST" action="/admin/category/add">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>分类名称</label>
                         <input type="text" name="name" required placeholder="输入分类名称">
@@ -370,10 +371,12 @@
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/category/toggle" style="display: inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= cat.id %>">
                                         <button type="submit" class="btn btn-sm"><%= cat.hidden == 1 ? '显示' : '隐藏' %></button>
                                     </form>
                                     <form method="POST" action="/admin/category/delete" style="display: inline;" onsubmit="return confirm('确定删除？')">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= cat.id %>">
                                         <button type="submit" class="btn btn-danger btn-sm">删除</button>
                                     </form>
@@ -383,6 +386,7 @@
                             <tr class="cat-edit-row" id="cat-edit-<%= cat.id %>" style="display:none;">
                                 <td colspan="5">
                                     <form method="POST" action="/admin/category/update" class="cat-edit-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= cat.id %>">
                                         <div class="edit-fields">
                                             <span><label>名称: <input type="text" name="name" value="<%= cat.name %>" required style="width:100px;"></label></span>
@@ -426,6 +430,7 @@
             <div class="card">
                 <div class="card-header"><h3>添加链接</h3></div>
                 <form method="POST" action="/admin/link/add">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>链接标题</label>
                         <input type="text" name="title" required placeholder="输入链接标题">
@@ -505,12 +510,14 @@
                                 <td><%= link.weight %></td>
                                 <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/link/toggle-top" style="display: inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <button type="submit" class="btn btn-sm <%= link.topping ? 'btn-warning' : 'btn-primary' %>"><%= link.topping ? '取消置顶' : '置顶' %></button>
                                     </form>
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <form method="POST" action="/admin/link/delete" style="display: inline;" onsubmit="return confirm('确定删除？')">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <button type="submit" class="btn btn-danger btn-sm">删除</button>
                                     </form>
@@ -520,6 +527,7 @@
                             <tr class="link-edit-row" id="link-edit-<%= link.id %>" style="display:none;">
                                 <td colspan="6">
                                     <form method="POST" action="/admin/link/update" class="link-edit-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <div class="edit-fields">
                                             <span><label>标题: <input type="text" name="title" value="<%= link.title %>" required style="width:120px;"></label></span>
@@ -565,6 +573,7 @@
 
             <div class="card">
                 <form method="POST" action="/admin/settings" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>网站标题</label>
                         <input type="text" name="title" value="<%= settings.title %>">
@@ -670,6 +679,7 @@
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <a href="/admin/export" class="btn btn-success"><i class="fas fa-download"></i> 导出书签</a>
                     <form method="POST" action="/admin/import" enctype="multipart/form-data" style="display: inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="file" name="bookmarks" accept=".html" style="display: none;" id="importFile" onchange="this.form.submit()">
                             <label for="importFile" class="btn btn-warning"><i class="fas fa-upload"></i> 导入书签</label>
@@ -684,6 +694,7 @@
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <a href="/admin/backup" class="btn btn-info"><i class="fas fa-download"></i> 下载备份</a>
                     <form method="POST" action="/admin/restore" enctype="multipart/form-data" style="display: inline;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="file" name="backup" accept=".json" style="display: none;" id="restoreFile" onchange="if(confirm('恢复数据将覆盖现有数据，确定要继续吗？')) this.form.submit()">
                             <label for="restoreFile" class="btn btn-secondary"><i class="fas fa-upload"></i> 恢复数据</label>

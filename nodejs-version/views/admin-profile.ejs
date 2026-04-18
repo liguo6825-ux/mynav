@@ -241,6 +241,7 @@
             <div class="card-header"><i class="fas fa-envelope"></i> 绑定邮箱</div>
             <div class="card-body">
                 <form method="POST" action="/admin/profile/bind-email">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>邮箱地址</label>
                         <input type="email" name="email" value="<%= user.email || '' %>" placeholder="请输入邮箱地址" required>
@@ -258,6 +259,7 @@
                     验证码已发送到 <strong><%= locals.pendingEmail || email %></strong>，请查收邮件
                 </div>
                 <form method="POST" action="/admin/profile/verify-email">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <input type="hidden" name="email" value="<%= locals.pendingEmail || email %>">
                     <div class="form-group">
                         <label>6位验证码</label>
