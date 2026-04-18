@@ -185,6 +185,21 @@
             outline: none;
             border-color: var(--primary);
         }
+
+        /* 两列表单布局 */
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 0;
+        }
+        .form-col {
+            flex: 1;
+            min-width: 0;
+        }
+        .form-col input,
+        .form-col select {
+            max-width: 300px;
+        }
         
         .message {
             padding: 12px 20px;
@@ -431,29 +446,39 @@
                 <div class="card-header"><h3>添加链接</h3></div>
                 <form method="POST" action="/admin/link/add">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <div class="form-group">
-                        <label>链接标题</label>
-                        <input type="text" name="title" required placeholder="输入链接标题">
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>链接标题</label>
+                            <input type="text" name="title" required placeholder="输入链接标题">
+                        </div>
+                        <div class="form-group form-col">
+                            <label>链接地址</label>
+                            <input type="url" name="url" required placeholder="https://example.com">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>链接地址</label>
-                        <input type="url" name="url" required placeholder="https://example.com">
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>自定义图标 (可选)</label>
+                            <input type="text" name="icon" placeholder="图标URL或留空">
+                        </div>
+                        <div class="form-group form-col">
+                            <label>描述</label>
+                            <input type="text" name="description" placeholder="简短描述">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>描述</label>
-                        <textarea name="description" rows="2" placeholder="简短描述"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>所属分类</label>
-                        <select name="fid" required>
-                            <% categories.forEach(function(cat) { %>
-                                <option value="<%= cat.id %>"><%= cat.fid === 0 ? '' : '└─ ' %><%= cat.name %></option>
-                            <% }); %>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>权重</label>
-                        <input type="number" name="weight" value="100">
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label>所属分类</label>
+                            <select name="fid" required>
+                                <% categories.forEach(function(cat) { %>
+                                    <option value="<%= cat.id %>"><%= cat.fid === 0 ? '' : '└─ ' %><%= cat.name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div class="form-group form-col">
+                            <label>权重</label>
+                            <input type="number" name="weight" value="100">
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">添加链接</button>
                 </form>
@@ -541,6 +566,7 @@
                                             </label></span>
                                             <span><label>权重: <input type="number" name="weight" value="<%= link.weight %>" style="width:50px;"></label></span>
                                             <span><label>描述: <input type="text" name="description" value="<%= link.description || '' %>" style="width:100px;"></label></span>
+                                            <span><label>图标: <input type="text" name="icon" value="<%= link.icon || '' %>" style="width:100px;" placeholder="URL或留空"></label></span>
                                             <button type="submit" class="btn btn-primary btn-sm">保存</button>
                                             <button type="button" class="btn btn-secondary btn-sm" onclick="toggleLinkEdit(<%= link.id %>)">取消</button>
                                         </div>

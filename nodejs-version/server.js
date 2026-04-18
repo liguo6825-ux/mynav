@@ -1156,9 +1156,9 @@ app.post('/admin/link/add', (req, res) => {
         return res.redirect('/login');
     }
 
-    const { title, url, description, fid, weight } = req.body;
-    db.prepare('INSERT INTO on_links (title, url, description, fid, weight) VALUES (?, ?, ?, ?, ?)').run(
-        title, url, description || '', parseInt(fid), parseInt(weight) || 100
+    const { title, url, description, fid, weight, icon } = req.body;
+    db.prepare('INSERT INTO on_links (title, url, description, fid, weight, icon) VALUES (?, ?, ?, ?, ?, ?)').run(
+        title, url, description || '', parseInt(fid), parseInt(weight) || 100, icon || ''
     );
     auditLog('link-add', req.session.username, req, '添加链接: ' + title + ' -> ' + url);
 
@@ -1202,9 +1202,9 @@ app.post('/admin/link/update', (req, res) => {
         return res.redirect('/login');
     }
 
-    const { id, title, url, fid, weight, description } = req.body;
-    db.prepare('UPDATE on_links SET title = ?, url = ?, fid = ?, weight = ?, description = ? WHERE id = ?')
-        .run(title, url, fid, weight || 100, description || '', id);
+    const { id, title, url, fid, weight, description, icon } = req.body;
+    db.prepare('UPDATE on_links SET title = ?, url = ?, fid = ?, weight = ?, description = ?, icon = ? WHERE id = ?')
+        .run(title, url, fid, weight || 100, description || '', icon || '', id);
     auditLog('link-update', req.session.username, req, '更新链接: ' + title + ' -> ' + url);
 
     res.redirect('/admin/link?msg=更新成功');

@@ -206,6 +206,24 @@
             flex-shrink: 0;
         }
 
+        .link-icon img {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        .icon-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
         .link-info { flex: 1; min-width: 0; }
         .link-title { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .link-desc { font-size: 12px; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -389,12 +407,15 @@
                             <% 
                                 var faviconDomain = '';
                                 try { faviconDomain = new URL(link.url).hostname; } catch(e) {}
+                                var firstChar = (link.title || 'L').charAt(0).toUpperCase();
                             %>
                             <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>">
                                 <div class="link-icon">
-                                    <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png"
-                                         style="width:28px;height:28px;border-radius:6px;object-fit:contain;"
-                                         onerror="this.outerHTML='<i class=\'fas fa-link\'></i>'">
+                                    <% if (link.icon) { %>
+                                        <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                    <% } else { %>
+                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                    <% } %>
                                 </div>
                                 <div class="link-info">
                                     <div class="link-title"><%= escapeHtml(link.title) %></div>
@@ -421,12 +442,15 @@
                                         // 动态获取 favicon 域名
                                         var faviconDomain = '';
                                         try { faviconDomain = new URL(link.url).hostname; } catch(e) {}
+                                        var firstChar = (link.title || 'L').charAt(0).toUpperCase();
                                     %>
                                     <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>" data-title="<%= escapeHtml(link.title) %>" data-url="<%= escapeHtml(link.url) %>" data-desc="<%= escapeHtml(link.description || '') %>">
                                         <div class="link-icon">
-                                            <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png"
-                                                 style="width:28px;height:28px;border-radius:6px;object-fit:contain;"
-                                                 onerror="this.outerHTML='<i class=\'fas fa-link\'></i>'">
+                                            <% if (link.icon) { %>
+                                                <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                            <% } else { %>
+                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                            <% } %>
                                         </div>
                                         <div class="link-info">
                                             <div class="link-title"><%= escapeHtml(link.title) %></div>
