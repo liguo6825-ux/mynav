@@ -55,7 +55,7 @@ if (!fs.existsSync(DATA_DIR)) {
 let db;
 function initDatabase() {
     db = new Database(DB_PATH);
-    
+
     // 创建表
     db.exec(`
         CREATE TABLE IF NOT EXISTS on_categorys (
@@ -67,7 +67,7 @@ function initDatabase() {
             hidden INTEGER DEFAULT 0,
             add_time INTEGER DEFAULT (strftime('%s', 'now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_links (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -78,13 +78,13 @@ function initDatabase() {
             topping INTEGER DEFAULT 0,
             add_time INTEGER DEFAULT (strftime('%s', 'now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_options (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             key TEXT UNIQUE NOT NULL,
             value TEXT
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -92,7 +92,7 @@ function initDatabase() {
             email TEXT,
             add_time INTEGER DEFAULT (strftime('%s', 'now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_verify_codes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL,
@@ -102,7 +102,7 @@ function initDatabase() {
             used INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -112,7 +112,7 @@ function initDatabase() {
             details TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         );
-        
+
         CREATE TABLE IF NOT EXISTS on_rate_limits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             key TEXT UNIQUE NOT NULL,
@@ -120,14 +120,14 @@ function initDatabase() {
             window_start INTEGER NOT NULL
         );
     `);
-    
+
     // 数据库迁移：添加 hidden 字段（如果不存在）
     try {
         db.exec("ALTER TABLE on_categorys ADD COLUMN hidden INTEGER DEFAULT 0");
     } catch (e) {
         // 字段已存在，忽略错误
     }
-    
+
     // 迁移：添加安全相关字段和表
     const migrations = [
         "ALTER TABLE on_users ADD COLUMN password_changed_at TEXT",
@@ -144,7 +144,7 @@ function initDatabase() {
         // 插入默认用户（使用bcrypt）
         const defaultPassword = bcrypt.hashSync('admin123', 10);
         db.prepare('INSERT INTO on_users (username, password, email) VALUES (?, ?, ?)').run('admin', defaultPassword, 'admin@example.com');
-        
+
         // 插入默认分类
         const insertCategory = db.prepare('INSERT INTO on_categorys (name, fid, weight, font_icon) VALUES (?, ?, ?, ?)');
         insertCategory.run('常用工具', 0, 100, 'fa-star');
@@ -152,7 +152,7 @@ function initDatabase() {
         insertCategory.run('开发工具', 0, 80, 'fa-code');
         insertCategory.run('前端开发', 3, 100, 'fa-html5');
         insertCategory.run('后端开发', 3, 90, 'fa-server');
-        
+
         // 插入示例链接
         const insertLink = db.prepare('INSERT INTO on_links (title, url, description, fid, weight) VALUES (?, ?, ?, ?, ?)');
         insertLink.run('百度', 'https://www.baidu.com', '百度搜索', 2, 100);
@@ -163,7 +163,7 @@ function initDatabase() {
         insertLink.run('Vue.js', 'https://vuejs.org', '渐进式 JavaScript 框架', 4, 95);
         insertLink.run('React', 'https://reactjs.org', '构建用户界面的 JavaScript 库', 4, 90);
         insertLink.run('Node.js', 'https://nodejs.org', 'JavaScript 运行时', 5, 100);
-        
+
         // 插入默认配置
         const defaultSettings = JSON.stringify({
             title: '我的导航站',
@@ -173,7 +173,7 @@ function initDatabase() {
             link_num: 50
         });
         db.prepare('INSERT INTO on_options (key, value) VALUES (?, ?)').run('site_settings', defaultSettings);
-        
+
         console.log('✅ 数据库初始化完成');
     }
 }
@@ -310,15 +310,31 @@ function sanitizeSearchInput(input) {
 
 // ---------- 独立的 CSRF 验证中间件 ----------
 function csrfMiddleware(req, res, next) {
-    // GET/HEAD/OPTIONS 不验证
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-    
+    // 辅助函数：生成 CSRF token（内联避免声明顺序问题）
+    const genToken = () => {
+        const random = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        const secret = req.session.secret || process.env.MYNAV_SESSION_SECRET || 'default';
+        const crypto = require('crypto');
+        return crypto.createHash('sha256').update(random + secret).digest('hex').substring(0, 32);
+    };
+
+    // GET/HEAD/OPTIONS 请求：生成 CSRF token 并传给模板
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        if (!req.session.csrfToken) {
+            req.session.csrfToken = genToken();
+        }
+        res.locals.csrfToken = req.session.csrfToken;
+        return next();
+    }
+
+    // POST/PUT/DELETE：验证 token
     const token = req.body && req.body._csrf;
     if (!token || token !== req.session.csrfToken) {
         return res.status(403).send('CSRF 验证失败，请刷新页面后重试');
     }
     // 验证成功后刷新 token（防止重放攻击）
-    req.session.csrfToken = generateCSRFToken();
+    req.session.csrfToken = genToken();
+    res.locals.csrfToken = req.session.csrfToken;
     next();
 }
 
@@ -332,14 +348,14 @@ function getSiteSettings() {
         keywords: '导航,书签,收藏,工具',
         link_num: 50
     };
-    
+
     // 从 on_options 读取 SMTP 配置
     const smtpKeys = ['smtp_host', 'smtp_port', 'smtp_secure', 'smtp_user', 'smtp_pass', 'email_from'];
     smtpKeys.forEach(key => {
         const r = db.prepare('SELECT value FROM on_options WHERE key = ?').get(key);
         if (r) settings[key] = r.value;
     });
-    
+
     return settings;
 }
 
@@ -455,14 +471,14 @@ app.get('/', (req, res) => {
     const themeId = req.query.theme || settings.theme || '1';
     const themePath = getThemePath(themeId);
     const linkNum = settings.link_num || 50; // 每分类显示链接数
-    
+
     // 获取所有分类（排除隐藏的）
     const categories = db.prepare('SELECT * FROM on_categorys WHERE hidden = 0 ORDER BY weight DESC').all();
-    
+
     // 构成分类树
     const categoryTree = {};
     const topCategories = [];
-    
+
     categories.forEach(cat => {
         cat.children = [];
         cat.links = [];
@@ -471,13 +487,13 @@ app.get('/', (req, res) => {
             topCategories.push(cat);
         }
     });
-    
+
     categories.forEach(cat => {
         if (cat.fid !== 0 && categoryTree[cat.fid]) {
             categoryTree[cat.fid].children.push(cat);
         }
     });
-    
+
     // 获取所有链接
     const links = db.prepare('SELECT * FROM on_links ORDER BY topping DESC, weight DESC').all();
     links.forEach(link => {
@@ -488,7 +504,7 @@ app.get('/', (req, res) => {
             }
         }
     });
-    
+
     // 扁平化所有分类（含子分类），用于模板遍历
     const allFlatCategories = [];
     function flattenCategories(cats) {
@@ -500,23 +516,23 @@ app.get('/', (req, res) => {
         });
     }
     flattenCategories(topCategories);
-    
+
     // 获取全部链接列表（用于搜索建议）
     const allLinks = db.prepare('SELECT title, url, description FROM on_links ORDER BY weight DESC').all();
-    
+
     // 搜索功能
     const searchQuery = req.query.q || '';
     let searchResults = [];
-    
+
     if (searchQuery) {
         const safeQuery = sanitizeSearchInput(searchQuery);
         searchResults = db.prepare(`
-            SELECT * FROM on_links 
+            SELECT * FROM on_links
             WHERE title LIKE ? OR description LIKE ? OR url LIKE ?
             ORDER BY weight DESC
         `).all(`%${safeQuery}%`, `%${safeQuery}%`, `%${safeQuery}%`);
     }
-    
+
     res.render(themePath, {
         settings,
         custom_header: settings.custom_header || '',
@@ -565,7 +581,7 @@ function verifyPassword(inputPassword, storedHash, username) {
     if (storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$')) {
         return bcrypt.compareSync(inputPassword, storedHash);
     }
-    
+
     // 兼容旧的MD5密码
     const md5Hash = crypto.createHash('md5').update(inputPassword).digest('hex');
     if (md5Hash === storedHash) {
@@ -574,7 +590,7 @@ function verifyPassword(inputPassword, storedHash, username) {
         db.prepare('UPDATE on_users SET password = ? WHERE username = ?').run(newHash, username);
         return true;
     }
-    
+
     return false;
 }
 
@@ -585,10 +601,10 @@ app.post('/login', (req, res) => {
     if (!limit.allowed) {
         return res.render('login', { error: limit.msg });
     }
-    
+
     const { username, password } = req.body;
     const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(username);
-    
+
     if (user && verifyPassword(password, user.password, username)) {
         req.session.loggedIn = true;
         req.session.username = user.username;
@@ -613,7 +629,7 @@ async function sendEmail(to, subject, html) {
     if (!settings.smtp_host || !settings.smtp_user) {
         throw new Error('邮件服务未配置');
     }
-    
+
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
         host: settings.smtp_host,
@@ -624,7 +640,7 @@ async function sendEmail(to, subject, html) {
             pass: decryptSMTP(settings.smtp_pass)
         }
     });
-    
+
     await transporter.sendMail({
         from: settings.email_from || settings.smtp_user,
         to,
@@ -646,43 +662,43 @@ app.post('/admin/change-password', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     // 频率限制
     const limit = checkRateLimit('change-password');
     if (!limit.allowed) {
         return res.render('change-password', { error: limit.msg, success: null });
     }
-    
+
     const { currentPassword, newPassword, confirmPassword } = req.body;
     const username = req.session.username;
-    
+
     // 验证输入
     if (!currentPassword || !newPassword || !confirmPassword) {
         return res.render('change-password', { error: '请填写所有字段', success: null });
     }
-    
+
     if (newPassword !== confirmPassword) {
         return res.render('change-password', { error: '两次输入的新密码不一致', success: null });
     }
-    
+
     if (newPassword.length < 8) {
         return res.render('change-password', { error: '密码至少8位', success: null });
     }
-    
+
     if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(newPassword)) {
         return res.render('change-password', { error: '密码必须包含字母和数字', success: null });
     }
-    
+
     // 验证当前密码
     const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(username);
     if (!user || !verifyPassword(currentPassword, user.password, username)) {
         return res.render('change-password', { error: '当前密码错误', success: null });
     }
-    
+
     // 更新密码
     const newHash = bcrypt.hashSync(newPassword, 10);
     db.prepare("UPDATE on_users SET password = ?, password_changed_at = datetime('now') WHERE username = ?").run(newHash, username);
-    
+
     auditLog('password-change', username, req);
     res.render('change-password', { error: null, success: '密码修改成功' });
 });
@@ -692,15 +708,15 @@ app.get('/admin/profile', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(req.session.username);
     const settings = getSiteSettings();
-    
-    res.render('admin-profile', { 
-        user, 
+
+    res.render('admin-profile', {
+        user,
         settings,
-        error: null, 
-        success: null 
+        error: null,
+        success: null
     });
 });
 
@@ -709,28 +725,28 @@ app.post('/admin/profile/bind-email', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     // 频率限制
     const limit = checkRateLimit('send-code');
     if (!limit.allowed) {
         const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(req.session.username);
         return res.render('admin-profile', { user, settings: getSiteSettings(), error: limit.msg, success: null });
     }
-    
+
     const { email } = req.body;
     const username = req.session.username;
-    
+
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(username);
         return res.render('admin-profile', { user, settings: getSiteSettings(), error: '邮箱格式不正确', success: null });
     }
-    
+
     // 生成验证码
     const code = generateVerifyCode();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    
+
     db.prepare('INSERT INTO on_verify_codes (email, code, type, expires_at) VALUES (?, ?, ?, ?)').run(email, code, 'verify_email', expiresAt);
-    
+
     // 发送验证码邮件
     sendEmail(email, '【MyNav】验证您的邮箱', `
         <p>您的验证码是：<strong style="font-size:24px;color:#007bff">${code}</strong></p>
@@ -738,18 +754,18 @@ app.post('/admin/profile/bind-email', (req, res) => {
         <p>如果您没有请求此验证码，请忽略此邮件。</p>
     `).then(() => {
         auditLog('bind-email-send', username, req, '发送到: ' + email);
-        res.render('admin-profile', { 
+        res.render('admin-profile', {
             user: { ...db.prepare('SELECT * FROM on_users WHERE username = ?').get(username), pending_email: email },
             settings: getSiteSettings(),
-            error: null, 
-            success: '验证码已发送到 ' + email 
+            error: null,
+            success: '验证码已发送到 ' + email
         });
     }).catch(err => {
-        res.render('admin-profile', { 
+        res.render('admin-profile', {
             user: db.prepare('SELECT * FROM on_users WHERE username = ?').get(username),
             settings: getSiteSettings(),
-            error: '发送失败: ' + err.message, 
-            success: null 
+            error: '发送失败: ' + err.message,
+            success: null
         });
     });
 });
@@ -759,35 +775,35 @@ app.post('/admin/profile/verify-email', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { email, code } = req.body;
     const username = req.session.username;
-    
+
     // 验证验证码
     const record = db.prepare(`
-        SELECT * FROM on_verify_codes 
-        WHERE email = ? AND code = ? AND type = 'verify_email' AND used = 0 
+        SELECT * FROM on_verify_codes
+        WHERE email = ? AND code = ? AND type = 'verify_email' AND used = 0
         AND expires_at > datetime('now')
         ORDER BY created_at DESC LIMIT 1
     `).get(email, code);
-    
+
     if (!record) {
         const user = db.prepare('SELECT * FROM on_users WHERE username = ?').get(username);
         return res.render('admin-profile', { user, settings: getSiteSettings(), error: '验证码错误或已过期', success: null });
     }
-    
+
     // 标记验证码已使用
     db.prepare('UPDATE on_verify_codes SET used = 1 WHERE id = ?').run(record.id);
-    
+
     // 更新用户邮箱
     db.prepare('UPDATE on_users SET email = ?, email_verified = 1 WHERE username = ?').run(email, username);
-    
+
     auditLog('bind-email-verify', username, req, '已绑定: ' + email);
-    res.render('admin-profile', { 
+    res.render('admin-profile', {
         user: db.prepare('SELECT * FROM on_users WHERE username = ?').get(username),
         settings: getSiteSettings(),
-        error: null, 
-        success: '邮箱绑定成功' 
+        error: null,
+        success: '邮箱绑定成功'
     });
 });
 
@@ -803,21 +819,21 @@ app.post('/forgot-password/send', (req, res) => {
     if (!limit.allowed) {
         return res.render('forgot-password', { error: limit.msg, success: null, step: 'email' });
     }
-    
+
     const { email } = req.body;
-    
+
     const user = db.prepare('SELECT * FROM on_users WHERE email = ?').get(email);
     if (!user) {
         // 不暴露用户是否存在
         return res.render('forgot-password', { error: null, success: '如果该邮箱已注册，重置邮件已发送', step: 'done' });
     }
-    
+
     // 生成重置token
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1小时
-    
+
     db.prepare('UPDATE on_users SET reset_token = ?, reset_token_expires = ? WHERE id = ?').run(token, expiresAt, user.id);
-    
+
     // 发送重置邮件
     const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
     sendEmail(email, '【MyNav】重置您的密码', `
@@ -838,21 +854,21 @@ app.post('/forgot-password/send', (req, res) => {
 // 重置密码页面
 app.get('/reset-password', (req, res) => {
     const { token } = req.query;
-    
+
     if (!token) {
         return res.redirect('/forgot-password');
     }
-    
+
     // 验证token
     const user = db.prepare(`
-        SELECT * FROM on_users 
+        SELECT * FROM on_users
         WHERE reset_token = ? AND reset_token_expires > datetime('now')
     `).get(token);
-    
+
     if (!user) {
         return res.render('reset-password', { error: '重置链接无效或已过期', success: null, valid: false });
     }
-    
+
     res.render('reset-password', { error: null, success: null, valid: true, token });
 });
 
@@ -864,32 +880,32 @@ app.post('/reset-password', (req, res) => {
     if (!limit.allowed) {
         return res.render('reset-password', { error: limit.msg, success: null, valid: true, token: req.body.token });
     }
-    
+
     const { token, newPassword, confirmPassword } = req.body;
-    
+
     // 验证token
     const user = db.prepare(`
-        SELECT * FROM on_users 
+        SELECT * FROM on_users
         WHERE reset_token = ? AND reset_token_expires > datetime('now')
     `).get(token);
-    
+
     if (!user) {
         return res.render('reset-password', { error: '重置链接无效或已过期', success: null, valid: false });
     }
-    
+
     // 验证密码
     if (newPassword !== confirmPassword) {
         return res.render('reset-password', { error: '两次输入的密码不一致', success: null, valid: true, token });
     }
-    
+
     if (newPassword.length < 8) {
         return res.render('reset-password', { error: '密码至少8位', success: null, valid: true, token });
     }
-    
+
     // 更新密码并清除token
     const newHash = bcrypt.hashSync(newPassword, 10);
     db.prepare("UPDATE on_users SET password = ?, password_changed_at = datetime('now'), reset_token = NULL, reset_token_expires = NULL WHERE id = ?").run(newHash, user.id);
-    
+
     auditLog('password-reset', user.username, req, '密码通过邮件重置链接重置');
     res.render('reset-password', { error: null, success: '密码重置成功，请登录', valid: false });
 });
@@ -899,7 +915,7 @@ app.get('/admin/email-settings', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const settings = getSiteSettings();
     res.render('admin-email-settings', { settings, error: null, success: null });
 });
@@ -909,9 +925,9 @@ app.post('/admin/email-settings', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, email_from } = req.body;
-    
+
     // 使用 on_options 表存储（smtp_pass 加密存储）
     const stmt = db.prepare('INSERT OR REPLACE INTO on_options (key, value) VALUES (?, ?)');
     stmt.run('smtp_host', smtp_host || '');
@@ -920,7 +936,7 @@ app.post('/admin/email-settings', (req, res) => {
     stmt.run('smtp_user', smtp_user || '');
     stmt.run('smtp_pass', smtp_pass ? encryptSMTP(smtp_pass) : ''); // 加密存储
     stmt.run('email_from', email_from || '');
-    
+
     auditLog('email-settings-save', req.session.username, req, '邮件设置已保存');
     res.render('admin-email-settings', { settings: getSiteSettings(), error: null, success: '保存成功' });
 });
@@ -930,15 +946,15 @@ app.post('/admin/test-email', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.json({ success: false, error: '未登录' });
     }
-    
+
     // 频率限制
     const limit = checkRateLimit('send-code');
     if (!limit.allowed) {
         return res.json({ success: false, error: limit.msg });
     }
-    
+
     const { test_email } = req.body;
-    
+
     sendEmail(test_email, '【MyNav】测试邮件', '<p>这是一封测试邮件，邮件服务配置正确！</p>')
         .then(() => {
             auditLog('test-email', req.session.username, req, '发送到: ' + test_email);
@@ -976,7 +992,7 @@ app.get('/admin/category', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const settings = getSiteSettings();
     const categories = db.prepare('SELECT * FROM on_categorys ORDER BY fid ASC, weight DESC').all();
     const stats = {
@@ -984,7 +1000,7 @@ app.get('/admin/category', (req, res) => {
         links: db.prepare('SELECT COUNT(*) as count FROM on_links').get().count,
         todayLinks: 0
     };
-    
+
     res.render('admin', {
         settings,
         stats,
@@ -1000,14 +1016,14 @@ app.post('/admin/category/add', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { name, fid, weight, font_icon } = req.body;
     const username = req.session.username;
     db.prepare('INSERT INTO on_categorys (name, fid, weight, font_icon) VALUES (?, ?, ?, ?)').run(
         name, parseInt(fid) || 0, parseInt(weight) || 100, font_icon || 'fa-folder'
     );
     auditLog('category-add', username, req, '添加分类: ' + name);
-    
+
     res.redirect('/admin/category?msg=添加成功');
 });
 
@@ -1015,15 +1031,15 @@ app.post('/admin/category/add', (req, res) => {
 function deleteCategoryRecursive(categoryId) {
     // 1. 删除该分类下的所有链接
     db.prepare('DELETE FROM on_links WHERE fid = ?').run(categoryId);
-    
+
     // 2. 找出所有子分类
     const children = db.prepare('SELECT id FROM on_categorys WHERE fid = ?').all(categoryId);
-    
+
     // 3. 递归删除每个子分类
     children.forEach(child => {
         deleteCategoryRecursive(child.id);
     });
-    
+
     // 4. 删除当前分类
     db.prepare('DELETE FROM on_categorys WHERE id = ?').run(categoryId);
 }
@@ -1033,19 +1049,19 @@ app.post('/admin/category/delete', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id } = req.body;
     const username = req.session.username;
-    
+
     // 递归删除（包含子分类和链接）
     const category = db.prepare('SELECT name FROM on_categorys WHERE id = ?').get(id);
     if (!category) {
         return res.redirect('/admin/category?error=分类不存在');
     }
-    
+
     deleteCategoryRecursive(parseInt(id));
     auditLog('category-delete', username, req, '删除分类: ' + category.name + ' (含子分类)');
-    
+
     res.redirect('/admin/category?msg=删除成功（含子分类和链接）');
 });
 
@@ -1054,7 +1070,7 @@ app.post('/admin/category/toggle', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id } = req.body;
     const category = db.prepare('SELECT name, hidden FROM on_categorys WHERE id = ?').get(id);
     if (category) {
@@ -1062,7 +1078,7 @@ app.post('/admin/category/toggle', (req, res) => {
         db.prepare('UPDATE on_categorys SET hidden = ? WHERE id = ?').run(newHidden, id);
         auditLog('category-toggle', req.session.username, req, '切换分类可见性: ' + category.name + ' -> ' + (newHidden ? '隐藏' : '显示'));
     }
-    
+
     res.redirect('/admin/category?msg=切换成功');
 });
 
@@ -1071,12 +1087,12 @@ app.post('/admin/category/update', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id, name, fid, font_icon, weight } = req.body;
     db.prepare('UPDATE on_categorys SET name = ?, fid = ?, font_icon = ?, weight = ? WHERE id = ?')
         .run(name, fid || 0, font_icon || 'fa-folder', weight || 100, id);
     auditLog('category-update', req.session.username, req, '更新分类: ' + name);
-    
+
     res.redirect('/admin/category?msg=更新成功');
 });
 
@@ -1085,18 +1101,18 @@ app.get('/admin/link', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const settings = getSiteSettings();
     const categories = db.prepare('SELECT * FROM on_categorys ORDER BY weight DESC').all();
     const searchQuery = req.query.q || '';
     const filterFid = req.query.fid ? parseInt(req.query.fid) : null;
     const message = req.query.msg || '';
-    
+
     // 构建链接查询
     let links;
     const params = [];
     let whereClauses = [];
-    
+
     if (searchQuery) {
         const safeQuery = sanitizeSearchInput(searchQuery);
         whereClauses.push('(title LIKE ? OR url LIKE ?)');
@@ -1106,16 +1122,16 @@ app.get('/admin/link', (req, res) => {
         whereClauses.push('fid = ?');
         params.push(filterFid);
     }
-    
+
     const whereSQL = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
     links = db.prepare(`SELECT * FROM on_links ${whereSQL} ORDER BY topping DESC, weight DESC`).all(...params);
-    
+
     const stats = {
         categories: db.prepare('SELECT COUNT(*) as count FROM on_categorys').get().count,
         links: db.prepare('SELECT COUNT(*) as count FROM on_links').get().count,
         todayLinks: 0
     };
-    
+
     res.render('admin', {
         settings,
         stats,
@@ -1134,13 +1150,13 @@ app.post('/admin/link/add', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { title, url, description, fid, weight } = req.body;
     db.prepare('INSERT INTO on_links (title, url, description, fid, weight) VALUES (?, ?, ?, ?, ?)').run(
         title, url, description || '', parseInt(fid), parseInt(weight) || 100
     );
     auditLog('link-add', req.session.username, req, '添加链接: ' + title + ' -> ' + url);
-    
+
     res.redirect('/admin/link?msg=添加成功');
 });
 
@@ -1149,14 +1165,14 @@ app.post('/admin/link/delete', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id } = req.body;
     const link = db.prepare('SELECT title FROM on_links WHERE id = ?').get(id);
     if (link) {
         auditLog('link-delete', req.session.username, req, '删除链接: ' + link.title);
     }
     db.prepare('DELETE FROM on_links WHERE id = ?').run(id);
-    
+
     res.redirect('/admin/link?msg=删除成功');
 });
 
@@ -1165,13 +1181,13 @@ app.post('/admin/link/toggle-top', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id } = req.body;
     const link = db.prepare('SELECT title, topping FROM on_links WHERE id = ?').get(id);
     const newTopping = link.topping ? 0 : 1;
     db.prepare('UPDATE on_links SET topping = ? WHERE id = ?').run(newTopping, id);
     auditLog('link-toggle-top', req.session.username, req, '切换置顶: ' + link.title + ' -> ' + (newTopping ? '置顶' : '取消置顶'));
-    
+
     res.redirect('/admin/link?msg=' + (newTopping ? '已置顶' : '已取消置顶'));
 });
 
@@ -1180,12 +1196,12 @@ app.post('/admin/link/update', (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
-    
+
     const { id, title, url, fid, weight, description } = req.body;
     db.prepare('UPDATE on_links SET title = ?, url = ?, fid = ?, weight = ?, description = ? WHERE id = ?')
         .run(title, url, fid, weight || 100, description || '', id);
     auditLog('link-update', req.session.username, req, '更新链接: ' + title + ' -> ' + url);
-    
+
     res.redirect('/admin/link?msg=更新成功');
 });
 
@@ -1219,10 +1235,10 @@ app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
 
     const { title, subtitle, description, keywords, link_num, theme, custom_header, auto_search,
             bg_type, bg_color, bg_gradient, bg_image, bg_overlay } = req.body;
-    
+
     let finalBgType = bg_type || 'none';
     let finalBgImage = bg_image || '';
-    
+
     // 如果选择了上传背景
     if (req.file) {
         if (req.file.size > 5 * 1024 * 1024) {
@@ -1246,7 +1262,7 @@ app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
         finalBgImage = '/bg/' + filename;
         auditLog('upload-bg', req.session.username, req, '上传背景: ' + filename);
     }
-    
+
     const newSettings = JSON.stringify({
         title, subtitle, description, keywords,
         link_num: parseInt(link_num) || 50,
