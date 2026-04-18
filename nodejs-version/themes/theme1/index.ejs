@@ -193,17 +193,20 @@
         }
 
         .link-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
             font-weight: bold;
+            font-size: 14px;
             margin-right: 12px;
             flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
         }
 
         .link-icon img {
@@ -211,17 +214,20 @@
             height: 28px;
             border-radius: 6px;
             object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
         .icon-fallback {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: none;
+        }
+
+        .link-icon img {
             width: 28px;
             height: 28px;
-            font-size: 16px;
-            font-weight: bold;
-            color: #fff;
+            border-radius: 6px;
+            object-fit: contain;
         }
 
         .link-info { flex: 1; min-width: 0; }
@@ -411,10 +417,11 @@
                             %>
                             <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>">
                                 <div class="link-icon">
+                                    <span class="icon-char"><%= firstChar %></span>
                                     <% if (link.icon) { %>
-                                        <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
+                                        <img src="<%= escapeHtml(link.icon) %>" onerror="this.remove()">
                                     <% } else { %>
-                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
+                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" onerror="this.remove()">
                                     <% } %>
                                 </div>
                                 <div class="link-info">
@@ -446,10 +453,11 @@
                                     %>
                                     <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>" data-title="<%= escapeHtml(link.title) %>" data-url="<%= escapeHtml(link.url) %>" data-desc="<%= escapeHtml(link.description || '') %>">
                                         <div class="link-icon">
+                                            <span class="icon-char"><%= firstChar %></span>
                                             <% if (link.icon) { %>
-                                                <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
+                                                <img src="<%= escapeHtml(link.icon) %>" onerror="this.remove()">
                                             <% } else { %>
-                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
+                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" onerror="this.remove()">
                                             <% } %>
                                         </div>
                                         <div class="link-info">

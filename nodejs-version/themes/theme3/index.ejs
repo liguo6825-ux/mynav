@@ -245,14 +245,18 @@
             align-items: center;
             justify-content: center;
             background: rgba(243,156,18,0.1);
+            position: relative;
         }
         .bm-favicon img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         .bm-favicon i { color: #f39c12; font-size: 16px; }
-        .icon-fallback {
+        .icon-char {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -542,10 +546,11 @@
                                                 try { faviconDomain3 = new URL(link.url).hostname; } catch(e) {}
                                                 var firstChar3 = (link.title || 'L').charAt(0).toUpperCase();
                                             %>
+                                            <span class="icon-char"><%= firstChar3 %></span>
                                             <% if (link.icon) { %>
-                                                <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar3 %>';this.parentNode.appendChild(s)">
+                                                <img src="<%= escapeHtml(link.icon) %>" onerror="this.remove()">
                                             <% } else { %>
-                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain3) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar3 %>';this.parentNode.appendChild(s)">
+                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain3) %>.png" onerror="this.remove()">
                                             <% } %>
                                         </div>
                                         <div class="bm-title"><%= escapeHtml(link.title) %></div>
