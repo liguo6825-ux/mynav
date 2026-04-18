@@ -1196,15 +1196,32 @@ app.post('/admin/link/toggle-top', (req, res) => {
     res.redirect('/admin/link?msg=' + (newTopping ? '已置顶' : '已取消置顶'));
 });
 
-// 更新链接
-app.post('/admin/link/update', (req, res) => {
+// 更新链接（支持 multipart 表单）
+app.post('/admin/link/update', upload.single('icon_file'), (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
     }
 
     const { id, title, url, fid, weight, description, icon } = req.body;
+    
+    // 如果上传了新图标，保存到 icons 目录
+    let finalIcon = icon || '';
+    if (req.file) {
+        const iconDir = path.join(__dirname, 'public', 'icons');
+        if (!fs.existsSync(iconDir)) {
+            fs.mkdirSync(iconDir, { recursive: true });
+        }
+        
+        const ext = path.extname(req.file.originalname) || '.png';
+        const filename = Date.now() + '-' + Math.random().toString(36).substr(2, 9) + ext;
+        const filepath = path.join(iconDir, filename);
+        
+        fs.writeFileSync(filepath, req.file.buffer);
+        finalIcon = '/icons/' + filename;
+    }
+    
     db.prepare('UPDATE on_links SET title = ?, url = ?, fid = ?, weight = ?, description = ?, icon = ? WHERE id = ?')
-        .run(title, url, fid, weight || 100, description || '', icon || '', id);
+        .run(title, url, fid, weight || 100, description || '', finalIcon, id);
     auditLog('link-update', req.session.username, req, '更新链接: ' + title + ' -> ' + url);
 
     res.redirect('/admin/link?msg=更新成功');
