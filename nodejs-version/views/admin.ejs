@@ -275,6 +275,73 @@
         .edit-fields label { font-size: 12px; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
         .edit-fields input, .edit-fields select { padding: 3px 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; }
         
+        /* 链接编辑响应式布局 */
+        .link-edit-form {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .link-edit-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            align-items: flex-end;
+        }
+        .link-edit-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 120px;
+        }
+        .link-edit-item label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+        }
+        .link-edit-item input,
+        .link-edit-item select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .link-edit-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        /* 图标上传 */
+        .icon-upload-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .icon-upload-wrapper input[type="text"] {
+            flex: 1;
+            min-width: 100px;
+        }
+        .icon-upload-btn {
+            padding: 5px 10px;
+            background: #6c757d;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .icon-upload-btn:hover {
+            background: #5a6268;
+        }
+        .icon-preview {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            object-fit: contain;
+            background: #e9ecef;
+        }
+        
         .message.error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
@@ -560,24 +627,49 @@
                             <!-- 链接编辑行 -->
                             <tr class="link-edit-row" id="link-edit-<%= link.id %>" style="display:none;">
                                 <td colspan="6">
-                                    <form method="POST" action="/admin/link/update" class="link-edit-form">
+                                    <form method="POST" action="/admin/link/update" class="link-edit-form" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <input type="hidden" name="id" value="<%= link.id %>">
-                                        <div class="edit-fields">
-                                            <span><label>标题: <input type="text" name="title" value="<%= link.title %>" required style="width:120px;"></label></span>
-                                            <span><label>URL: <input type="url" name="url" value="<%= link.url %>" required style="width:150px;"></label></span>
-                                            <span><label>分类: 
-                                                <select name="fid" style="width:100px;">
+                                        <div class="link-edit-grid">
+                                            <div class="link-edit-item">
+                                                <label>标题</label>
+                                                <input type="text" name="title" value="<%= link.title %>" required>
+                                            </div>
+                                            <div class="link-edit-item">
+                                                <label>URL</label>
+                                                <input type="url" name="url" value="<%= link.url %>" required>
+                                            </div>
+                                            <div class="link-edit-item">
+                                                <label>分类</label>
+                                                <select name="fid">
                                                     <% categories.forEach(function(c) { %>
                                                         <option value="<%= c.id %>" <%= link.fid==c.id?'selected':'' %>><%= c.name %></option>
                                                     <% }); %>
                                                 </select>
-                                            </label></span>
-                                            <span><label>权重: <input type="number" name="weight" value="<%= link.weight %>" style="width:50px;"></label></span>
-                                            <span><label>描述: <input type="text" name="description" value="<%= link.description || '' %>" style="width:100px;"></label></span>
-                                            <span><label>图标: <input type="text" name="icon" value="<%= link.icon || '' %>" style="width:100px;" placeholder="URL或留空"></label></span>
-                                            <button type="submit" class="btn btn-primary btn-sm">保存</button>
-                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleLinkEdit(<%= link.id %>)">取消</button>
+                                            </div>
+                                            <div class="link-edit-item">
+                                                <label>权重</label>
+                                                <input type="number" name="weight" value="<%= link.weight %>">
+                                            </div>
+                                            <div class="link-edit-item" style="min-width:200px;">
+                                                <label>描述</label>
+                                                <input type="text" name="description" value="<%= link.description || '' %>" placeholder="简短描述">
+                                            </div>
+                                            <div class="link-edit-item" style="min-width:220px;">
+                                                <label>图标</label>
+                                                <div class="icon-upload-wrapper">
+                                                    <% if (link.icon) { %>
+                                                        <img src="<%= link.icon %>" class="icon-preview" onerror="this.style.display='none'">
+                                                    <% } %>
+                                                    <input type="text" name="icon" value="<%= link.icon || '' %>" placeholder="URL或上传" id="icon-input-<%= link.id %>">
+                                                    <input type="file" name="icon_file" accept="image/*" style="display:none" id="icon-file-<%= link.id %>" onchange="uploadIcon(<%= link.id %>, this)">
+                                                    <button type="button" class="icon-upload-btn" onclick="document.getElementById('icon-file-<%= link.id %>').click()">上传</button>
+                                                </div>
+                                            </div>
+                                            <div class="link-edit-actions">
+                                                <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                                                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleLinkEdit(<%= link.id %>)">取消</button>
+                                            </div>
                                         </div>
                                     </form>
                                 </td>
@@ -590,6 +682,32 @@
             function toggleLinkEdit(id) {
                 var row = document.getElementById('link-edit-' + id);
                 row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+            }
+            
+            function uploadIcon(linkId, input) {
+                if (!input.files || !input.files[0]) return;
+                
+                var formData = new FormData();
+                formData.append('icon_file', input.files[0]);
+                formData.append('link_id', linkId);
+                formData.append('_csrf', document.querySelector('input[name="_csrf"]').value);
+                
+                fetch('/admin/link/upload-icon', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('icon-input-' + linkId).value = data.iconUrl;
+                        alert('图标上传成功！');
+                    } else {
+                        alert('上传失败：' + (data.error || '未知错误'));
+                    }
+                })
+                .catch(err => {
+                    alert('上传失败：' + err.message);
+                });
             }
             </script>
             

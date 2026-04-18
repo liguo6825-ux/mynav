@@ -1210,6 +1210,46 @@ app.post('/admin/link/update', (req, res) => {
     res.redirect('/admin/link?msg=更新成功');
 });
 
+// 图标上传目录
+const iconUploadDir = path.join(__dirname, 'public', 'icons');
+if (!fs.existsSync(iconUploadDir)) {
+    fs.mkdirSync(iconUploadDir, { recursive: true });
+}
+
+// 图标上传路由
+const iconUpload = multer({ 
+    dest: iconUploadDir,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('不支持的图片格式'));
+        }
+    }
+});
+
+app.post('/admin/link/upload-icon', iconUpload.single('icon_file'), (req, res) => {
+    if (!isLoggedIn(req)) {
+        return res.status(401).json({ success: false, error: '未登录' });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({ success: false, error: '没有上传文件' });
+    }
+
+    // 重命名为带扩展名的文件
+    const ext = path.extname(req.file.originalname) || '.png';
+    const newFilename = req.file.filename + ext;
+    const newPath = path.join(iconUploadDir, newFilename);
+    
+    fs.renameSync(req.file.path, newPath);
+    
+    const iconUrl = '/icons/' + newFilename;
+    res.json({ success: true, iconUrl });
+});
+
 // 系统设置
 app.get('/admin/settings', (req, res) => {
     if (!isLoggedIn(req)) {
