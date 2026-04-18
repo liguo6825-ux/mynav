@@ -647,21 +647,19 @@
                                 <option value="0" <%= settings.auto_search === '0' || settings.auto_search === 0 || settings.auto_search === '' ? 'selected' : '' %>>手动搜索（按回车）</option>
                             </select>
                         </div>
-                        <div class="form-group form-col"></div>
+                        <div class="form-group form-col">
+                            <label>背景</label>
+                            <select name="bg_type" id="bgType" class="form-control" onchange="toggleBgFields()">
+                                <option value="none" <%= (!settings.bg_type || settings.bg_type === 'none') ? 'selected' : '' %>>无背景（默认）</option>
+                                <option value="color" <%= settings.bg_type === 'color' ? 'selected' : '' %>>纯色背景</option>
+                                <option value="gradient" <%= settings.bg_type === 'gradient' ? 'selected' : '' %>>渐变背景</option>
+                                <option value="image" <%= settings.bg_type === 'image' ? 'selected' : '' %>>图片URL</option>
+                                <option value="upload" <%= settings.bg_type === 'upload' ? 'selected' : '' %>>上传图片</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <!-- 背景设置 -->
-                    <h4 style="margin:20px 0 15px;color:#444;border-bottom:1px solid #eee;padding-bottom:8px;">背景设置</h4>
-                    <div class="form-group">
-                        <label>背景类型</label>
-                        <select name="bg_type" id="bgType" class="form-control" onchange="toggleBgFields()">
-                            <option value="none" <%= (!settings.bg_type || settings.bg_type === 'none') ? 'selected' : '' %>>无背景（使用主题默认）</option>
-                            <option value="color" <%= settings.bg_type === 'color' ? 'selected' : '' %>>纯色背景</option>
-                            <option value="gradient" <%= settings.bg_type === 'gradient' ? 'selected' : '' %>>渐变背景</option>
-                            <option value="image" <%= settings.bg_type === 'image' ? 'selected' : '' %>>图片背景（URL）</option>
-                            <option value="upload" <%= settings.bg_type === 'upload' ? 'selected' : '' %>>上传背景图片</option>
-                        </select>
-                    </div>
+                    <!-- 背景详细设置 -->
                     <div class="form-group" id="bgColorGroup" style="display:none">
                         <label>背景颜色</label>
                         <div style="display:flex;align-items:center;gap:10px">
