@@ -327,6 +327,12 @@ function csrfMiddleware(req, res, next) {
         return next();
     }
 
+    // 跳过 multipart 表单（由路由手动处理 CSRF）
+    const contentType = req.headers['content-type'] || '';
+    if (contentType.includes('multipart/form-data')) {
+        return next();
+    }
+
     // POST/PUT/DELETE：验证 token
     const token = req.body && req.body._csrf;
     if (!token || token !== req.session.csrfToken) {
@@ -1226,10 +1232,15 @@ app.get('/admin/settings', (req, res) => {
     });
 });
 
-// 保存设置
+// 保存设置（CSRF 在 multer 后手动验证）
 app.post('/admin/settings', upload.single('bg_file'), (req, res) => {
     if (!isLoggedIn(req)) {
         return res.redirect('/login');
+    }
+    // 手动验证 CSRF（multer 解析后才能获取到 _csrf）
+    const token = req.body && req.body._csrf;
+    if (!token || token !== req.session.csrfToken) {
+        return res.status(403).send('CSRF 验证失败，请刷新页面后重试');
     }
 
     const { title, subtitle, description, keywords, link_num, theme, custom_header, auto_search,
