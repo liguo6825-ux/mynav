@@ -405,6 +405,36 @@
             color: #57606a;
         }
         body.light-mode .mode-btn:hover { border-color: #3f51b5; color: #3f51b5; }
+
+        /* 悬浮按钮组 - 管理入口 + 回到顶部 */
+        .float-btns {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 999;
+        }
+        .float-btn {
+            width: 45px;
+            height: 45px;
+            background: #2f4050;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .float-btn:hover { background: #3a4f5f; transform: scale(1.1); }
+        body.light-mode .float-btn { background: #4a5568; }
+        body.light-mode .float-btn:hover { background: #2d3748; }
     </style>
 </head>
 <body>
@@ -480,7 +510,16 @@
 
     <div class="site-footer">
         &copy; <%= new Date().getFullYear() %> <%= escapeHtml(siteName) %>
-        <span style="margin-left:8px"><a href="/login" style="color:#484f58;text-decoration:none">管理</a></span>
+    </div>
+
+    <!-- 悬浮按钮组 -->
+    <div class="float-btns">
+        <% if (isLoggedIn) { %>
+            <a href="/admin" class="float-btn" title="管理后台"><i class="fa fa-cog"></i></a>
+        <% } else { %>
+            <a href="/login" class="float-btn" title="登录"><i class="fa fa-cog"></i></a>
+        <% } %>
+        <a href="#top" class="float-btn" title="回到顶部"><i class="fa fa-arrow-up"></i></a>
     </div>
 </div>
 
