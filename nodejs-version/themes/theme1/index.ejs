@@ -412,9 +412,9 @@
                             <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>">
                                 <div class="link-icon">
                                     <% if (link.icon) { %>
-                                        <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                        <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
                                     <% } else { %>
-                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                        <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
                                     <% } %>
                                 </div>
                                 <div class="link-info">
@@ -447,9 +447,9 @@
                                     <a href="<%= escapeHtml(link.url) %>" target="_blank" class="link-card <%= link.topping ? 'topping' : '' %>" data-title="<%= escapeHtml(link.title) %>" data-url="<%= escapeHtml(link.url) %>" data-desc="<%= escapeHtml(link.description || '') %>">
                                         <div class="link-icon">
                                             <% if (link.icon) { %>
-                                                <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                                <img src="<%= escapeHtml(link.icon) %>" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
                                             <% } else { %>
-                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.outerHTML='<span class=\'icon-fallback\'><%= firstChar %></span>'">
+                                                <img src="https://favicon.im/<%= escapeHtml(faviconDomain) %>.png" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" onerror="this.style.display='none';var s=document.createElement('span');s.className='icon-fallback';s.textContent='<%= firstChar %>';this.parentNode.appendChild(s)">
                                             <% } %>
                                         </div>
                                         <div class="link-info">
