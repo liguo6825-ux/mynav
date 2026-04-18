@@ -632,14 +632,6 @@
                                         <input type="hidden" name="id" value="<%= link.id %>">
                                         <div class="link-edit-grid">
                                             <div class="link-edit-item">
-                                                <label>标题</label>
-                                                <input type="text" name="title" value="<%= link.title %>" required>
-                                            </div>
-                                            <div class="link-edit-item">
-                                                <label>URL</label>
-                                                <input type="url" name="url" value="<%= link.url %>" required>
-                                            </div>
-                                            <div class="link-edit-item">
                                                 <label>分类</label>
                                                 <select name="fid">
                                                     <% categories.forEach(function(c) { %>
@@ -665,6 +657,14 @@
                                                     <input type="file" name="icon_file" accept="image/*" style="display:none" id="icon-file-<%= link.id %>" onchange="uploadIcon(<%= link.id %>, this)">
                                                     <button type="button" class="icon-upload-btn" onclick="document.getElementById('icon-file-<%= link.id %>').click()">上传</button>
                                                 </div>
+                                            </div>
+                                            <div class="link-edit-item" style="min-width:150px;">
+                                                <label>标题 <span style="color:#e74c3c">*</span></label>
+                                                <input type="text" name="title" value="<%= link.title %>" required>
+                                            </div>
+                                            <div class="link-edit-item" style="flex:3;min-width:300px;">
+                                                <label>URL <span style="color:#e74c3c">*</span></label>
+                                                <input type="url" name="url" value="<%= link.url %>" required style="width:100%;">
                                             </div>
                                             <div class="link-edit-actions">
                                                 <button type="submit" class="btn btn-primary btn-sm">保存</button>
